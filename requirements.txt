@@ -1,0 +1,6 @@
+# Needed components for the Python projects.
+# To install, run 'pip install --force-reinstall -r requirements.txt'
+
+roboticstoolbox-python ~= 1.1.1
+numpy < 2                           # numpy 2 is not compatible with roboticstoolbox-python 1.1.1
+matplotlib ~= 3.5.3                 # matplotlib 3.6+ is not compatible with roboticstoolbox-python 1.1.1
