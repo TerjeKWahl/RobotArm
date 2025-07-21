@@ -18,7 +18,7 @@ This repository contains the following project parts in these folders:
 - `AI` TODO: AI stuff: Training and inference
 - `Mechanics` 3D files for custom made mechanical parts
   - `Gripper` 3D files for robot gripper
-  - `LegoTechnicHubPowerAdapter` 3D file for modifying Lego Technic Hub to be driven by a power adapter in stead of batteries
+  - `LegoTechnicHubWireInset` 3D file for modifying Lego Technic Hub to be driven by a power adapter in stead of batteries
 
 ## APIs used
 - API for communication between PC application and Lego Technic Hub 1 (lower arm)
