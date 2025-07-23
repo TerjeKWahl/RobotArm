@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+.vscode/arduino.json
+Controllers/ControllerGripper/ControllerGripper/.vscode/arduino.json
+Controllers/ControllerGripper/ControllerGripper/.vscode/c_cpp_properties.json
+RobotArmController/robot_arm_1.gif
