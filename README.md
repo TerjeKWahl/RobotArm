@@ -20,8 +20,4 @@ This repository contains the following project parts in these folders:
   - `Gripper` 3D files for robot gripper
   - `LegoTechnicHubWireInset` 3D file for modifying Lego Technic Hub to be driven by a power adapter in stead of batteries
 
-## APIs used
-- API for communication between PC application and Lego Technic Hub 1 (lower arm)
-- API for communication between PC application and Lego Technic Hub 1 (shoulder)
-- API for communication between PC application and Arduino (gripper)
-- API for communication between PC application and VR app
+These components communicate using well defined communication APIs. Please see the `Docs` folder for more information.
