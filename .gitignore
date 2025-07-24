@@ -209,3 +209,4 @@ __marimo__/
 Controllers/ControllerGripper/ControllerGripper/.vscode/arduino.json
 Controllers/ControllerGripper/ControllerGripper/.vscode/c_cpp_properties.json
 RobotArmController/robot_arm_1.gif
+Controllers/ControllerGripper/ControllerGripper/WifiSecrets.h
