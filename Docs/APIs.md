@@ -7,7 +7,7 @@ The following APIs are used:
 
 ## API for communication between PC application and Lego Technic Hub 1 or 2:
 
-Trying to keep payloads at max 27 bytes in communication with Lego Hubs, because of Bluetooth packet limitations. Because of this, a proprietary binary communication protocol is used. Angles are in degrees.
+Want to keep payloads short when communication with Lego Hubs, because of Bluetooth packet limitations (source: https://github.com/pybricks/technical-info/blob/master/pybricks-ble-broadcast-observe.md). Because of this, a proprietary binary communication protocol is used. Angles are in degrees.
 
 Request message from PC to Lego Technic Hub 1 or 2 (the same data is sent to both):
 1. Prefix "T"
