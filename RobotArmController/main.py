@@ -10,6 +10,7 @@ from time import sleep
 import asyncio
 from contextlib import suppress
 from bleak import BleakScanner, BleakClient
+from RobotArmController import control_robot_arm
 
 SW_VERSION = "0.1.0"  # Software version of this program
 PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef"
@@ -46,10 +47,10 @@ async def main():
 
     # Do a Bluetooth scan to find the hub.
     print("Searching for hub...")
-    bluetooth_device = await BleakScanner.find_device_by_name(HUB_NAME_2)
+    bluetooth_device = await BleakScanner.find_device_by_name(HUB_NAME_1)
 
     if bluetooth_device is None:
-        print(f"Could not find hub with name: {HUB_NAME_2}")
+        print(f"Could not find hub with name: {HUB_NAME_1}")
         return
 
     # Connect to the hub.
@@ -64,8 +65,8 @@ async def main():
         lego_hub_ready_event.clear()  # Prepare for the next ready event.
 
 
-        # Shorthand for sending some data to the hub.
         async def send(data):
+            """Send data to the hub."""
             # Send the data to the hub.
             await bluetooth_client_1.write_gatt_char(
                 PYBRICKS_COMMAND_EVENT_CHAR_UUID,
@@ -73,21 +74,11 @@ async def main():
                 response=True
             ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
 
-        # TODO: Defere to RobotArmController/RobotArmController.py for the actual robot arm control logic.
-        # For now, just send some test messages to the hub.
 
-        # Send a few messages to the hub.
-        for i in range(5):
-            await send(b"gre")
-            await asyncio.sleep(1)
-            await send(b"yel")
-            await asyncio.sleep(1)
-            print(".", end="", flush=True)
+        # Defer to RobotArmController.py for the actual robot arm control logic, and provide it the send() function.
+        await control_robot_arm(send)
 
-        # Send a message to indicate stop.
-        await send(b"bye")
-
-        print("done.")
+        print("Done.")
 
     # Hub disconnects here when async with block exits.
 
@@ -97,5 +88,5 @@ if __name__ == "__main__":
     with suppress(asyncio.CancelledError):
         while True:
             asyncio.run(main())
-            print("Main loop exited, probably because the hub was disconnected. Restarting main loop in 2 seconds...")
-            sleep(2)
+            print("Main loop exited, probably because the hub was disconnected. Restarting main loop in 5 seconds...")
+            sleep(5)
