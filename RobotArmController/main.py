@@ -12,10 +12,10 @@ from contextlib import suppress
 from bleak import BleakScanner, BleakClient
 from RobotArmController import control_robot_arm
 
-SW_VERSION = "0.1.0"  # Software version of this program
+SW_VERSION = "0.2.0"  # Software version of this program
 PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef"
-HUB_NAME_1 = "Pybricks Hub"
-HUB_NAME_2 = "Pybricks hub 2"
+HUB_NAME_SHOULDER_CONTROLLER = "Pybricks Hub"
+HUB_NAME_LOWER_ARM_CONTROLLER = "Pybricks hub 2"
 
 
 async def main():
@@ -33,52 +33,84 @@ async def main():
             main_task.cancel()
 
 
-    lego_hub_ready_event = asyncio.Event() # To tell when the hub is ready to receive data.
+    lego_hub_ready_event_1 = asyncio.Event() # To tell when the hub is ready to receive data.
+    lego_hub_ready_event_2 = asyncio.Event() # To tell when the hub is ready to receive data.
 
-    def handle_rx(_, data: bytearray):
+
+    def handle_rx_1(_, data: bytearray):
         if data[0] == 0x01:  # "write stdout" event (0x01)
             payload = data[1:]
 
             if payload == b"rdy":
-                lego_hub_ready_event.set()
+                print("Received 'rdy' from the first hub.")
+                lego_hub_ready_event_1.set()
             else:
                 print("Received:", payload)
                 # TODO: Handle the received data here.
 
-    # Do a Bluetooth scan to find the hub.
-    print("Searching for hub...")
-    bluetooth_device = await BleakScanner.find_device_by_name(HUB_NAME_1)
 
-    if bluetooth_device is None:
-        print(f"Could not find hub with name: {HUB_NAME_1}")
+    def handle_rx_2(_, data: bytearray):
+        if data[0] == 0x01:  # "write stdout" event (0x01)
+            payload = data[1:]
+
+            if payload == b"rdy":
+                print("Received 'rdy' from the second hub.")
+                lego_hub_ready_event_2.set()
+            else:
+                print("Received:", payload)
+                # TODO: Handle the received data here.
+
+
+    print("Searching for the first hub...")
+    bluetooth_device_1 = await BleakScanner.find_device_by_name(HUB_NAME_SHOULDER_CONTROLLER) # Do a Bluetooth scan to find the first hub.
+
+    if bluetooth_device_1 is None:
+        print(f"Could not find hub with name: {HUB_NAME_SHOULDER_CONTROLLER}")
         return
 
-    # Connect to the hub.
-    async with BleakClient(bluetooth_device, handle_bluetooth_disconnect) as bluetooth_client_1:
- 
-        await bluetooth_client_1.start_notify(PYBRICKS_COMMAND_EVENT_CHAR_UUID, handle_rx) # Subscribe to notifications from the hub.
-       
-        # Tell user to start program on the hub.
-        print("Start the program on the Lego hub now with the button.")
+    async with BleakClient(bluetooth_device_1, handle_bluetooth_disconnect) as bluetooth_client_1: # Connect to the first hub.
+        print(f"Connected to {bluetooth_device_1.name}")
+        await bluetooth_client_1.start_notify(PYBRICKS_COMMAND_EVENT_CHAR_UUID, handle_rx_1) # Subscribe to notifications from the first hub.
 
-        await lego_hub_ready_event.wait()  # Wait for hub to say that it is ready to receive data.
-        lego_hub_ready_event.clear()  # Prepare for the next ready event.
+        print("Searching for the second hub...")
+        bluetooth_device_2 = await BleakScanner.find_device_by_name(HUB_NAME_LOWER_ARM_CONTROLLER) # Do a Bluetooth scan to find the second hub.
+
+        if bluetooth_device_2 is None:
+            print(f"Could not find hub with name: {HUB_NAME_LOWER_ARM_CONTROLLER}")
+            return
+
+        async with BleakClient(bluetooth_device_2, handle_bluetooth_disconnect) as bluetooth_client_2: # Connect to the second hub.
+            print(f"Connected to {bluetooth_device_2.name}")
+            await bluetooth_client_2.start_notify(PYBRICKS_COMMAND_EVENT_CHAR_UUID, handle_rx_2) # Subscribe to notifications from the second hub.
+
+            # Tell user to start program on the hub.
+            print("Start the programs on the two Lego hubs now with the button.")
+
+            await lego_hub_ready_event_1.wait()  # Wait for hub to say that it is ready to receive data.
+            lego_hub_ready_event_1.clear()       # Prepare for the next ready event.
+            await lego_hub_ready_event_2.wait()  # Wait for hub to say that it is ready to receive data.
+            lego_hub_ready_event_2.clear()       # Prepare for the next ready event.
+            print("Both hubs are ready to receive data.")
+
+            async def send(data):
+                """Send data to the two hubs."""
+                # Send the same data to both hubs.
+                await bluetooth_client_1.write_gatt_char(
+                    PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+                    b"\x06" + data,  # prepend "write stdin" command (0x06)
+                    response=True
+                ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
+                await bluetooth_client_2.write_gatt_char(
+                    PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+                    b"\x06" + data,  # prepend "write stdin" command (0x06)
+                    response=True
+                )
 
 
-        async def send(data):
-            """Send data to the hub."""
-            # Send the data to the hub.
-            await bluetooth_client_1.write_gatt_char(
-                PYBRICKS_COMMAND_EVENT_CHAR_UUID,
-                b"\x06" + data,  # prepend "write stdin" command (0x06)
-                response=True
-            ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
+            # Defer to RobotArmController.py for the actual robot arm control logic, and provide it the send() function.
+            await control_robot_arm(send)
 
-
-        # Defer to RobotArmController.py for the actual robot arm control logic, and provide it the send() function.
-        await control_robot_arm(send)
-
-        print("Done.")
+            print("Done.")
 
     # Hub disconnects here when async with block exits.
 

@@ -33,30 +33,43 @@ async def control_robot_arm(send_function):
     send = send_function
     print("Starting to control the robot arm...")
 
-    desired_angles.shoulder_forward = 35
-    desired_angles.shoulder_out = 35
-    message = create_message_from_PC_to_controller(
-        movement_mode=MovementMode.MOVE_FAST,
-        desired_angles=desired_angles,
-        last_known_angles=last_known_angles
-    )
-    print("Sending message to the hub:", message)
-    await send(message)
-    print("Message sent to the hub.")
-    await asyncio.sleep(5)  # Wait to let the hub process the command.
+    # Loop 3 times:
+    for _ in range(3):
 
-    # Now let's change the angles and send another message
-    desired_angles.shoulder_forward = 0
-    desired_angles.shoulder_out = 0
-    message = create_message_from_PC_to_controller(
-        movement_mode=MovementMode.MOVE_FAST,
-        desired_angles=desired_angles,
-        last_known_angles=last_known_angles
-    )
-    print("Sending message to the hub:", message)
-    await send(message)
-    print("Message sent to the hub.")
-    await asyncio.sleep(3)  # Wait to let the hub process the command.
+        desired_angles.gripper = 0
+        desired_angles.wrist = 90
+        desired_angles.underarm = 90
+        desired_angles.elbow = -20
+        desired_angles.overarm = -45
+        desired_angles.shoulder_forward = 35
+        desired_angles.shoulder_out = 35
+        message = create_message_from_PC_to_controller(
+            movement_mode=MovementMode.MOVE_FAST,
+            desired_angles=desired_angles,
+            last_known_angles=last_known_angles
+        )
+        print("Sending message to the hub:", message)
+        await send(message)
+        print("Message sent to the hub.")
+        await asyncio.sleep(5)  # Wait to let the hub process the command.
+
+        # Now let's change the angles and send another message
+        desired_angles.gripper = 0
+        desired_angles.wrist = 0
+        desired_angles.underarm = 0
+        desired_angles.elbow = 0
+        desired_angles.overarm = 0
+        desired_angles.shoulder_forward = 0
+        desired_angles.shoulder_out = 0
+        message = create_message_from_PC_to_controller(
+            movement_mode=MovementMode.MOVE_FAST,
+            desired_angles=desired_angles,
+            last_known_angles=last_known_angles
+        )
+        print("Sending message to the hub:", message)
+        await send(message)
+        print("Message sent to the hub.")
+        await asyncio.sleep(5)  # Wait to let the hub process the command.
 
     message = create_message_from_PC_to_controller(
         movement_mode=MovementMode.RETURN_TO_ZERO,

@@ -43,15 +43,49 @@ def sanitize_angles(joint_angles: JointAngles):
     """
     Checks for illegal angles, and corrects them if they are too large or too small.
     """
+
+    # TODO: Compensate a limit when b is moving, etc
+
+    if joint_angles.wrist > 110:
+        print("Warning: wrist value too large.")
+        joint_angles.wrist = 110
+    if joint_angles.wrist < -110:
+        print("Warning: wrist value too small.")
+        joint_angles.wrist = -110
+
+    if joint_angles.underarm > 120:
+        print("Warning: underarm value too large.")
+        joint_angles.underarm = 120
+    if joint_angles.underarm < -120:
+        print("Warning: underarm value too small.")
+        joint_angles.underarm = -120
+
+    if joint_angles.elbow > 13:
+        print("Warning: elbow value too large.")
+        joint_angles.elbow = 13
+    if joint_angles.elbow < -20:
+        print("Warning: elbow value too small.")
+        joint_angles.elbow = -20
+
+    if joint_angles.overarm > 35:
+        print("Warning: overarm value too large.")
+        joint_angles.overarm = 35
+    if joint_angles.overarm < -120:
+        print("Warning: overarm value too small.")
+        joint_angles.overarm = -120
+
     if joint_angles.shoulder_forward > 45:
-        print("Warning: shoulder_forward value too big.")
+        print("Warning: shoulder_forward value too large.")
         joint_angles.shoulder_forward = 45
     if joint_angles.shoulder_forward < -10: # TODO: Make more liberal, but depending on overarm twist and elbow angle
+        print("Warning: shoulder_forward value too small.")
         joint_angles.shoulder_forward = -10
 
     if joint_angles.shoulder_out > 35:
+        print("Warning: shoulder_out value too large.")
         joint_angles.shoulder_out = 35
     if joint_angles.shoulder_out < 0: # TODO: Make slightly more liberal
+        print("Warning: shoulder_out value too small.")
         joint_angles.shoulder_out = 0
 
 
