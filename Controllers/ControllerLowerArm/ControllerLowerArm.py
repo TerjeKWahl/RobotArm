@@ -12,7 +12,7 @@ from pybricks.tools import wait, StopWatch
 hub = TechnicHub()
 
 # Motor definitions, including gearing ratios:
-wrist    = a = Motor(Port.A, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[12, 32]) # Wrist
+wrist    = a = Motor(Port.A, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[12, 32]) # Wrist up/down
 underarm = b = Motor(Port.B, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[[12, 20],[8,28]]) # Underarm twist
 elbow    = c = Motor(Port.C, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[1, 24],[20,28]]) # Elbow
 overarm  = d = Motor(Port.D, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[8, 24],[12,60]]) # Overarm twist
@@ -34,31 +34,33 @@ a.run_target(1500, 0, then=Stop.HOLD, wait=True)
 b.run_target(1500, 0, then=Stop.HOLD, wait=True)
 c.run_target(1500, 0, then=Stop.HOLD, wait=True)
 d.run_target(1500, 0, then=Stop.HOLD, wait=True)
-a.reset_angle(0)
-b.reset_angle(0)
-c.reset_angle(0)
-d.reset_angle(0)
+#a.reset_angle(0)
+#b.reset_angle(0)
+#c.reset_angle(0)
+#d.reset_angle(0)
+#wait(2000)
+
 
 # Just a dummy sequence for now:
-a.run_target(1500, 90, then=Stop.HOLD, wait=True)
-a.run_target(1500, -90, then=Stop.HOLD, wait=True)
+a.run_target(1500, 110, then=Stop.HOLD, wait=True)
+a.run_target(1500, -110, then=Stop.HOLD, wait=True)
 a.run_target(1500, 0, then=Stop.HOLD, wait=False)
 
 #a.run_target(1500, -180*12/32, then=Stop.HOLD, wait=False) # Compensate a when b is moving
-b.run_target(1500, 180, then=Stop.HOLD, wait=True)
+b.run_target(1500, 120, then=Stop.HOLD, wait=True)
+b.run_target(1500, -120, then=Stop.HOLD, wait=True)
 b.run_target(1500, 0, then=Stop.HOLD, wait=False)
+b.run_target(1500, 0, then=Stop.HOLD, wait=True)
 
-c.run_target(1500, 90, then=Stop.HOLD, wait=True)
+c.run_target(1500, 13, then=Stop.HOLD, wait=True)
+c.run_target(1500, -20, then=Stop.HOLD, wait=True)
 c.run_target(1500, 0, then=Stop.HOLD, wait=False)
 
-d.run_target(1500, 90, then=Stop.HOLD, wait=True)
-d.run_target(1500, -90, then=Stop.HOLD, wait=True)
+d.run_target(1500, 35, then=Stop.HOLD, wait=True)
+d.run_target(1500, -120, then=Stop.HOLD, wait=True)
 d.run_target(1500, 0, then=Stop.HOLD, wait=False)
 
 wait(1000)
-
-#a.run_target(1500, -90, then=Stop.HOLD, wait=True)
-#c.run_target(1500, 0, then=Stop.HOLD, wait=True)
 
 # Clean up and finish by returning to starting position:
 a.run_target(1500, 0, then=Stop.HOLD, wait=False)
