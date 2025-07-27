@@ -3,7 +3,7 @@
 Humanoid robot arm with 6 DoF and a gripper, built mostly in Lego, controllable from VR and (todo) with AI to make it autonomous.
 
 This repository contains the following project parts in these folders:
-- `Controllers` Robot arm controllers
+- `EmbeddedControllers` Robot arm embedded controllers
   - `ControllerLowerArm` Lego Technic Hub 1 controller (lower arm) using Pybricks
   - `ControllerShoulder` Lego Technic Hub 2 controller (shoulder) using Pybricks
   - `ControllerGripper` Controller for the gripper using Arduino
