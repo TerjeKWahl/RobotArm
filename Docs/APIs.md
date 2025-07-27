@@ -44,10 +44,10 @@ Reply message from Lego Technic Hub 1 or 2 or Arduino to PC:
     - 11 = Lego Technic Hub 2 (shoulder), ignore lower arm and gripper joint values
     - 12 = Arduino (gripper), ignore shoulder and lower arm joint values
 5.  int8, error code - 0 means no error
-6.  int8, current angle for gripper (or 0xFF if unknown)
-7.  int8, current angle for wrist (or 0xFF if unknown)
-8.  int8, current angle for underarm (or 0xFF if unknown)
-9.  int8, current angle for elbow (or 0xFF if unknown)
-10. int8, current angle for overarm (or 0xFF if unknown)
-11. int8, current angle for shoulder_forward (or 0xFF if unknown)
-12. int8, current angle for shoulder_out (or 0xFF if unknown)
+6.  int8, current angle for gripper (or -128 if unknown)
+7.  int8, current angle for wrist (or -128 if unknown)
+8.  int8, current angle for underarm (or -128 if unknown)
+9.  int8, current angle for elbow (or -128 if unknown)
+10. int8, current angle for overarm (or -128 if unknown)
+11. int8, current angle for shoulder_forward (or -128 if unknown)
+12. int8, current angle for shoulder_out (or -128 if unknown)
