@@ -1,25 +1,24 @@
 # APIs used for communicating between components
 
 The following APIs are used:
-- API for communication between PC application and Lego Technic Hub 1 (lower arm) or Lego Technic Hub 2 (shoulder)
-- API for communication between PC application and Arduino (gripper)
+- API for communication between PC application and Lego Technic Hub 1 (lower arm) or Lego Technic Hub 2 (shoulder) or Arduino (gripper)
 - API for communication between PC application and VR app
 
 ## API for communication between PC application and Lego Technic Hub 1 or 2, and Arduino:
 
-Want to keep payloads short when communication with Lego Hubs, because of Bluetooth packet limitations (source: https://github.com/pybricks/technical-info/blob/master/pybricks-ble-broadcast-observe.md). Because of this, a proprietary binary communication protocol is used. Angles are in degrees.
+We want to keep payloads short when communication with Lego Hubs, because of Bluetooth packet limitations (source: https://github.com/pybricks/technical-info/blob/master/pybricks-ble-broadcast-observe.md). Because of this, a proprietary binary communication protocol is used. Angles are in degrees.
 
 Request message from PC to Lego Technic Hub 1 or 2 or Arduino (the same data is sent to all):
 
-1. Prefix "T"
-2. Prefix "W"
-3. API version, 1
-4. int8, requested movement mode:  
+1.  Prefix "T"
+2.  Prefix "W"
+3.  API version, 1
+4.  int8, requested movement mode:  
     - 1 = move all joints as fast as possible  
     - 2 = synchronize joints to arrive at the destination simultaneously
     - 3 = calibration mode
     - 4 = return to standard/zero angles, and exit
-5. int8, desired angle for gripper
+5.  int8, desired angle for gripper
 6.  int8, desired angle for wrist  
 7.  int8, desired angle for underarm 
 8.  int8, desired angle for elbow   

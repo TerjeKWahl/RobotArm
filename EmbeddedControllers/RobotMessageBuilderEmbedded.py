@@ -6,6 +6,7 @@ illegal values.
 from ustruct import unpack
 
 REC_MSG_LENGTH = 18
+MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT = 4
 UNKNOWN_ANGLE = -128
 
 class JointAngles:

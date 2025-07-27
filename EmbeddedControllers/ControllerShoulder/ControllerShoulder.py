@@ -10,10 +10,10 @@ from pybricks.tools import wait, StopWatch
 from usys import stdin, stdout
 from uselect import poll, POLLIN
 from micropython import kbd_intr
-from RobotMessageBuilderEmbedded import JointAngles, MessageFromPcToController, parse_message_from_PC_to_controller, REC_MSG_LENGTH
+from RobotMessageBuilderEmbedded import JointAngles, MessageFromPcToController, \
+     parse_message_from_PC_to_controller, REC_MSG_LENGTH, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT
 
 PRINT_DEBUG_INFO = False # Set to True to enable debug messages via printing to stdout. This will interfere with Bluetooth communication that also uses stdout!
-MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT = 4
 
 hub = TechnicHub()
 stopwatch = StopWatch()
@@ -24,8 +24,6 @@ receive_buffer = bytearray(REC_MSG_LENGTH)
 shoulder_forward = a = Motor(Port.A, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[8, 24],[12,36],[8,60]]) # Shoulder forward/back
 shoulder_out     = b = Motor(Port.B, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[[8,36],[20, 20],[12,20],[12,60]]) # Shoulder out/up / in/down to the side
 
-shoulder_forward_desired_angle = 0
-shoulder_out_desired_angle = 0
 last_known_angles = JointAngles(set_all_unknown = True)
 
 
@@ -86,7 +84,6 @@ while True:
     # Read message from stdin
     num_bytes_read = stdin.buffer.readinto(receive_buffer, REC_MSG_LENGTH)
     print_debug(f"Read {num_bytes_read} bytes: {receive_buffer}")
-    message = MessageFromPcToController()
     is_message_ok, message = parse_message_from_PC_to_controller(receive_buffer)
     
     # Decide what to do based on the command.
@@ -98,12 +95,9 @@ while True:
         if message.movement_mode == MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT:
             break
 
-        shoulder_forward_desired_angle = message.desired_angles.shoulder_forward
-        shoulder_out_desired_angle = message.desired_angles.shoulder_out
-
         # Now move as instructed:
-        shoulder_forward.run_target(1500, shoulder_forward_desired_angle, then=Stop.HOLD, wait=False)
-        shoulder_out.run_target(1500, shoulder_out_desired_angle, then=Stop.HOLD, wait=False)
+        shoulder_forward.run_target(1500, message.desired_angles.shoulder_forward, then=Stop.HOLD, wait=False)
+        shoulder_out.run_target(1500, message.desired_angles.shoulder_out, then=Stop.HOLD, wait=False)
 
 
 # Return to zero angles and exit:
