@@ -5,3 +5,4 @@ roboticstoolbox-python ~= 1.1.1
 numpy < 2                           # numpy 2 is not compatible with roboticstoolbox-python 1.1.1
 matplotlib ~= 3.5.3                 # matplotlib 3.6+ is not compatible with roboticstoolbox-python 1.1.1
 bleak ~= 1.0.1                      # Bluetooth
+imageio ~=2.37.0
