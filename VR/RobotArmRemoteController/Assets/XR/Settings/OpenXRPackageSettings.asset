@@ -243,7 +243,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: feeef8d85de8db242bdda70cc7ff5acd, type: 3}
   m_Name: OculusTouchControllerProfile Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 0
+  m_enabled: 1
   nameUi: Oculus Touch Controller Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.oculustouch
@@ -684,6 +684,7 @@ MonoBehaviour:
   company: Unity
   priority: 0
   required: 0
+  m_UseRightHandedNDC: 0
 --- !u!114 &2846150459939031389
 MonoBehaviour:
   m_ObjectHideFlags: 0
