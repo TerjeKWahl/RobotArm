@@ -22,8 +22,8 @@ class JointAngles(ctypes.Structure):
         ("underarm", ctypes.c_int8),
         ("elbow", ctypes.c_int8),
         ("overarm", ctypes.c_int8),
-        ("shoulder_forward", ctypes.c_int8),
-        ("shoulder_out", ctypes.c_int8)
+        ("shoulder_out", ctypes.c_int8),
+        ("shoulder_forward", ctypes.c_int8)
     ]
 
 
@@ -49,6 +49,15 @@ def create_message_from_PC_to_controller(movement_mode: MovementMode,
     :param last_known_angles: The last known angles for the joints.
     :return: A byte array representing the message.
     """
+    # Clip desired angles to valid signed byte range (-128 to 127), to avoid overflow:
+    desired_angles.gripper = max(-128, min(127, desired_angles.gripper))
+    desired_angles.wrist = max(-128, min(127, desired_angles.wrist))
+    desired_angles.underarm = max(-128, min(127, desired_angles.underarm))
+    desired_angles.elbow = max(-128, min(127, desired_angles.elbow))
+    desired_angles.overarm = max(-128, min(127, desired_angles.overarm))
+    desired_angles.shoulder_out = max(-128, min(127, desired_angles.shoulder_out))
+    desired_angles.shoulder_forward = max(-128, min(127, desired_angles.shoulder_forward))
+
     message = MessageFromPcToController(
         prefix_t=b'T',
         prefix_w=b'W',

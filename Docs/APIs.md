@@ -23,15 +23,15 @@ Request message from PC to Lego Technic Hub 1 or 2 or Arduino (the same data is 
 7.  int8, desired angle for underarm 
 8.  int8, desired angle for elbow   
 9.  int8, desired angle for overarm  
-10. int8, desired angle for shoulder_forward 
-11. int8, desired angle for shoulder_out  
+10. int8, desired angle for shoulder_out  
+11. int8, desired angle for shoulder_forward 
 12. int8, last known angle for gripper
 13. int8, last known angle for wrist  
 14. int8, last known angle for underarm 
 15. int8, last known angle for elbow   
 16. int8, last known angle for overarm  
-17. int8, last known angle for shoulder_forward 
-18. int8, last known angle for shoulder_out  
+17. int8, last known angle for shoulder_out  
+18. int8, last known angle for shoulder_forward 
   
 Reply message from Lego Technic Hub 1 or 2 or Arduino to PC:
 
@@ -48,5 +48,5 @@ Reply message from Lego Technic Hub 1 or 2 or Arduino to PC:
 8.  int8, current angle for underarm (or -128 if unknown)
 9.  int8, current angle for elbow (or -128 if unknown)
 10. int8, current angle for overarm (or -128 if unknown)
-11. int8, current angle for shoulder_forward (or -128 if unknown)
-12. int8, current angle for shoulder_out (or -128 if unknown)
+11. int8, current angle for shoulder_out (or -128 if unknown)
+12. int8, current angle for shoulder_forward (or -128 if unknown)
