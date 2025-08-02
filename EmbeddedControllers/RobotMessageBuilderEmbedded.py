@@ -17,16 +17,16 @@ class JointAngles:
             self.underarm = 0
             self.elbow = 0
             self.overarm = 0
-            self.shoulder_forward = 0
             self.shoulder_out = 0
+            self.shoulder_forward = 0
         else:
             self.gripper = UNKNOWN_ANGLE # According to the API spec, -128 means "unknown"
             self.wrist = UNKNOWN_ANGLE
             self.underarm = UNKNOWN_ANGLE
             self.elbow = UNKNOWN_ANGLE
             self.overarm = UNKNOWN_ANGLE
-            self.shoulder_forward = UNKNOWN_ANGLE
             self.shoulder_out = UNKNOWN_ANGLE
+            self.shoulder_forward = UNKNOWN_ANGLE
 
 
 class MessageFromPcToController:
@@ -74,19 +74,19 @@ def sanitize_angles(joint_angles: JointAngles):
         print("Warning: overarm value too small.")
         joint_angles.overarm = -120
 
-    if joint_angles.shoulder_forward > 45:
-        print("Warning: shoulder_forward value too large.")
-        joint_angles.shoulder_forward = 45
-    if joint_angles.shoulder_forward < -10: # TODO: Make more liberal, but depending on overarm twist and elbow angle
-        print("Warning: shoulder_forward value too small.")
-        joint_angles.shoulder_forward = -10
-
     if joint_angles.shoulder_out > 35:
         print("Warning: shoulder_out value too large.")
         joint_angles.shoulder_out = 35
     if joint_angles.shoulder_out < 0: # TODO: Make slightly more liberal
         print("Warning: shoulder_out value too small.")
         joint_angles.shoulder_out = 0
+
+    if joint_angles.shoulder_forward > 45:
+        print("Warning: shoulder_forward value too large.")
+        joint_angles.shoulder_forward = 45
+    if joint_angles.shoulder_forward < -10: # TODO: Make more liberal, but depending on overarm twist and elbow angle
+        print("Warning: shoulder_forward value too small.")
+        joint_angles.shoulder_forward = -10
 
 
 def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromPcToController]:
@@ -110,15 +110,15 @@ def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromP
     message.desired_angles.underarm, \
     message.desired_angles.elbow, \
     message.desired_angles.overarm, \
-    message.desired_angles.shoulder_forward, \
     message.desired_angles.shoulder_out, \
-    message.last_known_angles.gripper_last, \
-    message.last_known_angles.wrist_last, \
-    message.last_known_angles.underarm_last, \
-    message.last_known_angles.elbow_last, \
-    message.last_known_angles.overarm_last, \
-    message.last_known_angles.shoulder_forward_last, \
-    message.last_known_angles.shoulder_out_last = unpack(format_string, data)
+    message.desired_angles.shoulder_forward, \
+    message.last_known_angles.gripper, \
+    message.last_known_angles.wrist, \
+    message.last_known_angles.underarm, \
+    message.last_known_angles.elbow, \
+    message.last_known_angles.overarm, \
+    message.last_known_angles.shoulder_out, \
+    message.last_known_angles.shoulder_forward = unpack(format_string, data)
 
     #print(f"t={message.prefix_t} w={message.prefix_w} sf={message.desired_angles.shoulder_forward} so={message.desired_angles.shoulder_out}")
 
