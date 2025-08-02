@@ -10,7 +10,7 @@ from time import sleep
 import asyncio
 from contextlib import suppress
 from bleak import BleakScanner, BleakClient
-from RobotArmController import control_robot_arm
+from RobotArmController import control_robot_arm, handle_message_from_controller_to_PC
 
 SW_VERSION = "0.2.0"  # Software version of this program
 PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef"
@@ -46,7 +46,7 @@ async def main():
                 lego_hub_ready_event_1.set()
             else:
                 print("Received:", payload)
-                # TODO: Handle the received data here.
+                handle_message_from_controller_to_PC(payload)
 
 
     def handle_rx_2(_, data: bytearray):
@@ -58,7 +58,7 @@ async def main():
                 lego_hub_ready_event_2.set()
             else:
                 print("Received:", payload)
-                # TODO: Handle the received data here.
+                handle_message_from_controller_to_PC(payload)
 
 
     print("Searching for the first hub...")
@@ -92,7 +92,7 @@ async def main():
             lego_hub_ready_event_2.clear()       # Prepare for the next ready event.
             print("Both hubs are ready to receive data.")
 
-            async def send(data):
+            async def send_to_lego_hubs(data):
                 """Send data to the two hubs."""
                 # Send the same data to both hubs.
                 await bluetooth_client_1.write_gatt_char(
@@ -108,7 +108,7 @@ async def main():
 
 
             # Defer to RobotArmController.py for the actual robot arm control logic, and provide it the send() function.
-            await control_robot_arm(send)
+            await control_robot_arm(send_to_lego_hubs)
 
             print("Done.")
 

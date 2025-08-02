@@ -7,6 +7,9 @@ the API defined in Docs/APIs.md.
 import ctypes
 import enum
 
+# Constants
+UNKNOWN_ANGLE = -128  # Value used to indicate unknown angle
+
 
 # Define enum for movement modes:
 class MovementMode(enum.IntEnum):
