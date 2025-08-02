@@ -4,7 +4,7 @@ This file handles higher level logic for controlling the robot arm.
 
 from time import sleep
 import asyncio
-from RobotMessageBuilder import create_message_from_PC_to_controller, MovementMode, JointAngles
+from RobotMessageManager import create_message_from_PC_to_controller, MovementMode, JointAngles
 
 desired_angles = JointAngles(
     gripper=0,
