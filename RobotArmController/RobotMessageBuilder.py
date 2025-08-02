@@ -7,12 +7,14 @@ the API defined in Docs/APIs.md.
 import ctypes
 import enum
 
+
 # Define enum for movement modes:
 class MovementMode(enum.IntEnum):
     MOVE_FAST = 1  # move all joints as fast as possible
     SYNCHRONIZE = 2  # synchronize joints to arrive at the destination simultaneously
     CALIBRATION = 3  # calibration mode
     RETURN_TO_ZERO = 4  # return to standard/zero angles, and exit
+
 
 # Define enum for information sources:
 class InformationSource(enum.IntEnum):
@@ -21,6 +23,7 @@ class InformationSource(enum.IntEnum):
     ARDUINO_GRIPPER = 12       # Arduino (gripper)
     VR_APP = 20                # VR app
     PC_APP = 21                # PC app
+
 
 # Define struct for joint angles:
 class JointAngles(ctypes.Structure):
@@ -58,6 +61,17 @@ class MessageFromPcToController(ctypes.Structure):
     ]
 
 
+class MessageFromControllerToPC(ctypes.Structure):
+    _fields_ = [
+        ("prefix_t", ctypes.c_char),
+        ("prefix_w", ctypes.c_char),
+        ("api_version", ctypes.c_int8),
+        ("information_source", ctypes.c_int8),
+        ("error_code", ctypes.c_int8),
+        ("current_angles", JointAngles)
+    ]
+
+
 class MessageFromPcToVR(ctypes.Structure):
     _fields_ = [
         ("prefix_t", ctypes.c_char),
@@ -68,6 +82,17 @@ class MessageFromPcToVR(ctypes.Structure):
         ("connection_status", ctypes.c_int8),
         ("last_known_distance_and_angle_offset", DistanceAndAngleOffset),
         ("last_known_angles", JointAngles)
+    ]
+
+
+class MessageFromVRToPC(ctypes.Structure):
+    _fields_ = [
+        ("prefix_t", ctypes.c_char),
+        ("prefix_k", ctypes.c_char),
+        ("prefix_w", ctypes.c_char),
+        ("api_version", ctypes.c_int8),
+        ("information_source", ctypes.c_int8),
+        ("desired_distance_and_angle_offset", DistanceAndAngleOffset)
     ]
 
 
@@ -102,16 +127,15 @@ def create_message_from_PC_to_controller(movement_mode: MovementMode,
     return ctypes.string_at(ctypes.byref(message), ctypes.sizeof(message))
 
 
-# TODO: Delete because it is not used in the PC application:
-def parse_message_from_PC_to_controller(data: bytes) -> MessageFromPcToController:
+def parse_message_from_controller_to_PC(data: bytes) -> MessageFromControllerToPC:
     """
-    Parses a message from the PC to the robot arm controller.
+    Parses a message from the robot arm controller (Lego hub or Arduino) to the PC.
 
     :param data: The byte array representing the message.
-    :return: A MessageFromPcToController object, or None if the message is invalid.
+    :return: A MessageFromControllerToPC object, or None if the message is invalid.
     """
-    if len(data) != ctypes.sizeof(MessageFromPcToController):
-        print(f"Invalid message length: Got {len(data)} but expected {ctypes.sizeof(MessageFromPcToController)}")
+    if len(data) != ctypes.sizeof(MessageFromControllerToPC):
+        print(f"Invalid message length: Got {len(data)} but expected {ctypes.sizeof(MessageFromControllerToPC)}")
         return None
     if data[0:2] != b'TW':
         print(f"Invalid prefix: Got {data[0:2]} but expected b'TW'")
@@ -119,8 +143,14 @@ def parse_message_from_PC_to_controller(data: bytes) -> MessageFromPcToControlle
     if data[2] != 1:  # Check API version
         print(f"Invalid API version: Got {data[2]} but expected 1")
         return None
-    # Create a MessageFromPcToController object from the byte array
-    message = MessageFromPcToController.from_buffer_copy(data)
+    if data[3] not in (InformationSource.LEGO_HUB_1_LOWER_ARM, 
+                       InformationSource.LEGO_HUB_2_SHOULDER, 
+                       InformationSource.ARDUINO_GRIPPER):
+        print(f"Invalid information source: Got {data[3]} but expected one of {list(InformationSource)}")
+        return None
+    
+    # Create a MessageFromControllerToPC object from the byte array
+    message = MessageFromControllerToPC.from_buffer_copy(data)
     return message
 
 
@@ -162,3 +192,40 @@ def create_message_from_PC_to_VR(is_connection_to_controllers_ok: bool,
         result[field_offset:field_offset+2] = value.to_bytes(2, 'big', signed=True)
     
     return bytes(result)
+
+
+def parse_message_from_VR_to_PC(data: bytes) -> MessageFromVRToPC:
+    """
+    Parses a message from the VR app to the PC.
+
+    :param data: The byte array representing the message.
+    :return: A MessageFromVRToPC object, or None if the message is invalid.
+    """
+    if len(data) != ctypes.sizeof(MessageFromVRToPC):
+        print(f"Invalid message length: Got {len(data)} but expected {ctypes.sizeof(MessageFromVRToPC)}")
+        return None
+    if data[0:3] != b'TKW':
+        print(f"Invalid prefix: Got {data[0:3]} but expected b'TKW'")
+        return None
+    if data[3] != 1:  # Check API version
+        print(f"Invalid API version: Got {data[3]} but expected 1")
+        return None
+    if data[4] != InformationSource.VR_APP:
+        print(f"Invalid information source: Got {data[4]} but expected {InformationSource.VR_APP}")
+        return None
+    
+    # Convert big-endian 16-bit fields to little-endian before parsing
+    data_converted = bytearray(data)
+    
+    # Offsets for the 16-bit fields (after 5 single-byte fields: T, K, W, version, source)
+    offset_base = 5
+    
+    # Convert each 16-bit field from big-endian to little-endian
+    for i in range(6):  # 6 int16 fields in DistanceAndAngleOffset
+        field_offset = offset_base + i * 2
+        value = int.from_bytes(data_converted[field_offset:field_offset+2], 'big', signed=True)
+        data_converted[field_offset:field_offset+2] = value.to_bytes(2, 'little', signed=True)
+    
+    # Create a MessageFromVRToPC object from the converted byte array
+    message = MessageFromVRToPC.from_buffer_copy(data_converted)
+    return message
