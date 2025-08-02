@@ -10,8 +10,9 @@ from pybricks.tools import wait, StopWatch
 from usys import stdin, stdout
 from uselect import poll, POLLIN
 from micropython import kbd_intr
-from RobotMessageBuilderEmbedded import JointAngles, MessageFromPcToController, \
-     parse_message_from_PC_to_controller, REC_MSG_LENGTH, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT
+from RobotMessageBuilderEmbedded import JointAngles, MessageFromPCToController, \
+     parse_message_from_PC_to_controller, REC_MSG_LENGTH, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT, \
+     INFORMATION_SOURCE_HUB_2, create_message_from_controller_to_PC
 
 PRINT_DEBUG_INFO = False # Set to True to enable debug messages via printing to stdout. This will interfere with Bluetooth communication that also uses stdout!
 
@@ -25,7 +26,8 @@ shoulder_forward = a = Motor(Port.A, positive_direction=Direction.COUNTERCLOCKWI
 shoulder_out     = b = Motor(Port.B, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[[8,36],[20, 20],[12,20],[12,60]]) # Shoulder out/up / in/down to the side
 
 last_known_angles = JointAngles(set_all_unknown = True)
-
+last_send_time = 0
+last_receive_time = 0
 
 def print_debug(string):
     if PRINT_DEBUG_INFO:
@@ -69,16 +71,37 @@ hub.light.blink(Color.VIOLET,[600,200]) # Violet blinking to indicate waiting fo
 # Let the remote program know we are ready for commands
 stdout.buffer.write(b"rdy") # TODO Check if we need to call flush() after writing.
 
+stopwatch.reset()
+
 while True:
-    stopwatch.reset()
     is_timeout_already_expired = False
     # Check if data is available
     while not stdin_event_monitor.poll(0):
-        if stopwatch.time() > 1000:
+        current_time = stopwatch.time()
+        if current_time - last_receive_time > 1000:
             if not is_timeout_already_expired:
                 hub.light.blink(Color.VIOLET,[600,200]) # Violet blinking to indicate waiting for connection/data to begin or resume.
                 is_timeout_already_expired = True
-        # TODO: Send last known angles every X ms
+        
+        # Send last known angles every 100 ms
+        if current_time - last_send_time >= 100:
+            # Update known angles from motor positions
+            known_angle_shoulder_forward = shoulder_forward.angle()
+            known_angle_shoulder_out = shoulder_out.angle()
+            
+            # Create JointAngles with only shoulder angles known
+            current_angles = JointAngles(set_all_unknown=True)
+            current_angles.shoulder_forward = known_angle_shoulder_forward
+            current_angles.shoulder_out = known_angle_shoulder_out
+            
+            # Create and send reply message
+            reply_message = create_message_from_controller_to_PC(INFORMATION_SOURCE_HUB_2, current_angles)
+            stdout.buffer.write(reply_message)
+            
+            last_known_angles.shoulder_forward = known_angle_shoulder_forward
+            last_known_angles.shoulder_out = known_angle_shoulder_out
+            last_send_time = current_time
+        
         wait(10)
 
     # Read message from stdin
@@ -91,6 +114,14 @@ while True:
         hub.light.on(Color.RED)
     else:
         hub.light.on(Color.GREEN)
+        last_receive_time = stopwatch.time()
+
+        # Update last known angles except the angles that are owned by this controller:
+        last_known_angles.gripper = message.last_known_angles.gripper
+        last_known_angles.wrist = message.last_known_angles.wrist
+        last_known_angles.underarm = message.last_known_angles.underarm
+        last_known_angles.elbow = message.last_known_angles.elbow
+        last_known_angles.overarm = message.last_known_angles.overarm
 
         if message.movement_mode == MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT:
             break

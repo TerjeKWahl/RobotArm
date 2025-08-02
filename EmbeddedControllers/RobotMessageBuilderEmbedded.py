@@ -3,11 +3,15 @@ Helper class that defines classes representing angles and messages, and defines
 functions for parsing and creating messages, and sanitizing joint angles for possible
 illegal values.
 """
-from ustruct import unpack
+from ustruct import unpack, pack
 
 REC_MSG_LENGTH = 18
 MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT = 4
 UNKNOWN_ANGLE = -128
+
+# Information source constants
+INFORMATION_SOURCE_HUB_1 = 10  # Lego Technic Hub 1 (lower arm)
+INFORMATION_SOURCE_HUB_2 = 11  # Lego Technic Hub 2 (shoulder)
 
 class JointAngles:
     def __init__(self, set_all_unknown = False):
@@ -29,7 +33,7 @@ class JointAngles:
             self.shoulder_forward = UNKNOWN_ANGLE
 
 
-class MessageFromPcToController:
+class MessageFromPCToController:
     def __init__(self):
         self.prefix_t = 0
         self.prefix_w = 0
@@ -37,6 +41,16 @@ class MessageFromPcToController:
         self.movement_mode = 0
         self.desired_angles = JointAngles()
         self.last_known_angles = JointAngles()
+
+
+class MessageFromControllerToPC:
+    def __init__(self, information_source: int, current_angles: JointAngles):
+        self.prefix_t = 84  # ASCII "T"
+        self.prefix_w = 87  # ASCII "W"
+        self.api_version = 1
+        self.information_source = information_source
+        self.error_code = 0  # 0 means no error
+        self.current_angles = current_angles
 
 
 def sanitize_angles(joint_angles: JointAngles):
@@ -89,7 +103,7 @@ def sanitize_angles(joint_angles: JointAngles):
         joint_angles.shoulder_forward = -10
 
 
-def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromPcToController]:
+def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromPCToController]:
     """
     Parses a message from the PC to the robot arm controller.
 
@@ -97,7 +111,7 @@ def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromP
     :return: A tuple of a bool and a MessageFromPcToController instance. The bool value:
              False if message is not as expected, or True if message is valid.
     """
-    message = MessageFromPcToController()
+    message = MessageFromPCToController()
 
     if len(data) != REC_MSG_LENGTH:
         print(f"Invalid message length: Got {len(data)} but expected {REC_MSG_LENGTH}")
@@ -133,3 +147,31 @@ def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromP
         return False, message
 
     return True, message
+
+
+def create_message_from_controller_to_PC(information_source: int, current_angles: JointAngles) -> bytes:
+    """
+    Creates a binary message from controller to PC.
+    For now, the error_code is always 0 (no error).
+    
+    :param information_source: Source identifier (10=Hub1, 11=Hub2)
+    :param current_angles: Current joint angles
+    :return: Binary message as bytes
+    """
+    message = MessageFromControllerToPC(information_source, current_angles)
+    
+    format_string = "<bbbbbbbbbbbb"  # 12 signed bytes
+    
+    return pack(format_string,
+                message.prefix_t,
+                message.prefix_w, 
+                message.api_version,
+                message.information_source,
+                message.error_code,
+                message.current_angles.gripper,
+                message.current_angles.wrist,
+                message.current_angles.underarm,
+                message.current_angles.elbow,
+                message.current_angles.overarm,
+                message.current_angles.shoulder_out,
+                message.current_angles.shoulder_forward)

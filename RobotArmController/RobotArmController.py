@@ -8,22 +8,22 @@ import threading
 from RobotMessageManager import create_message_from_PC_to_controller, MovementMode, JointAngles, parse_message_from_controller_to_PC, InformationSource, UNKNOWN_ANGLE
 
 desired_angles = JointAngles(
-    gripper=0,
-    wrist=0,
-    underarm=0,
-    elbow=0,
-    overarm=0,
-    shoulder_forward=0,
-    shoulder_out=0
+    gripper = 0,
+    wrist = 0,
+    underarm = 0,
+    elbow = 0,
+    overarm = 0,
+    shoulder_forward = 0,
+    shoulder_out = 0
 )
 last_known_angles = JointAngles(
-    gripper=0,
-    wrist=0,
-    underarm=0,
-    elbow=0,
-    overarm=0,
-    shoulder_forward=0,
-    shoulder_out=0
+    gripper = UNKNOWN_ANGLE,
+    wrist = UNKNOWN_ANGLE,
+    underarm = UNKNOWN_ANGLE,
+    elbow = UNKNOWN_ANGLE,
+    overarm = UNKNOWN_ANGLE,
+    shoulder_forward = UNKNOWN_ANGLE,
+    shoulder_out = UNKNOWN_ANGLE
 )
 
 # define a function pointer to send data to the hub
@@ -70,7 +70,7 @@ async def control_robot_arm(send_to_lego_hubs_function):
             desired_angles.shoulder_forward = angles[0]
 
             message = create_message_from_PC_to_controller(
-                movement_mode=MovementMode.MOVE_FAST,
+                movement_mode=MovementMode.RUN_TO_TARGET,
                 desired_angles=desired_angles,
                 last_known_angles=last_known_angles
             )
@@ -93,7 +93,7 @@ async def control_robot_arm(send_to_lego_hubs_function):
         desired_angles.shoulder_out = 35
         desired_angles.shoulder_forward = 35
         message = create_message_from_PC_to_controller(
-            movement_mode=MovementMode.MOVE_FAST,
+            movement_mode=MovementMode.RUN_TO_TARGET,
             desired_angles=desired_angles,
             last_known_angles=last_known_angles
         )
@@ -111,7 +111,7 @@ async def control_robot_arm(send_to_lego_hubs_function):
         desired_angles.shoulder_out = 0
         desired_angles.shoulder_forward = 0
         message = create_message_from_PC_to_controller(
-            movement_mode=MovementMode.MOVE_FAST,
+            movement_mode=MovementMode.RUN_TO_TARGET,
             desired_angles=desired_angles,
             last_known_angles=last_known_angles
         )
@@ -132,6 +132,7 @@ async def control_robot_arm(send_to_lego_hubs_function):
 
 
     print("Exiting the control_robot_arm function.")
+
 
 def handle_message_from_controller_to_PC(data: bytes):
     """

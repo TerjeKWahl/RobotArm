@@ -14,14 +14,14 @@ proprietary binary communication protocol is used. Angles are in degrees.
 The numbering in the two lists below represent byte numbers.
 
 
-### Request message from PC to Lego Technic Hub 1 or 2 or Arduino (the same data is sent to all):
+### Message from PC to Lego Technic Hub 1 or 2 or Arduino (the same data is sent to all):
 
 1.  Prefix "T"
 2.  Prefix "W"
 3.  API version, 1
 4.  int8, requested movement mode:  
-    - 1 = move all joints as fast as possible  
-    - 2 = synchronize joints to arrive at the destination simultaneously
+    - 1 = move all joints as fast as possible (for continuous tracking)
+    - 2 = move to target with smooth accelleration and decelleration (run to target)
     - 3 = calibration mode
     - 4 = return to standard/zero angles, and exit
 5.  int8, desired angle for gripper
@@ -40,7 +40,7 @@ The numbering in the two lists below represent byte numbers.
 18. int8, last known angle for shoulder_forward 
   
 
-### Reply message from Lego Technic Hub 1 or 2 or Arduino to PC:
+### Message from Lego Technic Hub 1 or 2 or Arduino to PC:
 
 1.  Prefix "T"
 2.  Prefix "W"

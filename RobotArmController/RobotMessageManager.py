@@ -13,10 +13,10 @@ UNKNOWN_ANGLE = -128  # Value used to indicate unknown angle
 
 # Define enum for movement modes:
 class MovementMode(enum.IntEnum):
-    MOVE_FAST = 1  # move all joints as fast as possible
-    SYNCHRONIZE = 2  # synchronize joints to arrive at the destination simultaneously
-    CALIBRATION = 3  # calibration mode
-    RETURN_TO_ZERO = 4  # return to standard/zero angles, and exit
+    MOVE_FAST = 1      # Move all joints as fast as possible (for continuous tracking)
+    RUN_TO_TARGET = 2  # Move to target with smooth acceleration and deceleration (run to target)
+    CALIBRATION = 3    # Calibration mode
+    RETURN_TO_ZERO = 4 # Return to standard/zero angles, and exit
 
 
 # Define enum for information sources:
