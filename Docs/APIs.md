@@ -72,7 +72,7 @@ When talking about position offsets:
 
 VR app should send a UDP package to the PC every second frame (around 30 times per second).
 
-The PC should send a UDP package to the VR app every time it receives a message (matches the rate).
+The PC should send a UDP package to the VR app 30 times per second.
 
 16 bit numbers are sent big-endian (MSB first, LSB last). Distances are in mm. Angles are in degrees. 
 Offsets mean in relation to the initial starting position of the robot arm.
@@ -85,7 +85,7 @@ Offsets mean in relation to the initial starting position of the robot arm.
 3.  Prefix "W"
 4.  API version, 1
 5.  int8, information source:  
-    - 1 = VR app
+    - 20 = VR app
 6.  int16 MSB, X desired distance offset
 7.  int16 LSB, X desired distance offset
 8.  int16 MSB, Y desired distance offset
@@ -107,7 +107,7 @@ Offsets mean in relation to the initial starting position of the robot arm.
 3.  Prefix "W"
 4.  API version, 1
 5.  int8, information source:  
-    - 2 = PC app
+    - 21 = PC app
 6.  int8, PC connection status:
     - 0 = Not connected to controllers (Lego and Arduino)
     - 1 = Connected to controllers (Lego and Arduino)
