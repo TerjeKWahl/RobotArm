@@ -16,6 +16,9 @@ RUN_MODE = RunMode.VR_FOLLOWING_MODE  # Change to RunMode.VR_FOLLOWING_MODE for 
 HUB_NAME_SHOULDER_CONTROLLER = "Pybricks Hub"
 HUB_NAME_LOWER_ARM_CONTROLLER = "Pybricks hub 2"
 
+VR_IP_ADDRESS = "192.168.0.47" # IP address of the VR device
+VR_UDP_PORT = 7506             # Port for UDP communication with the VR device (both sending and receiving)
+
 
 # Definition of the Lego robot arm structure (links and joints). This is a right arm:
 studs = 0.008  # 8 mm between Lego studs

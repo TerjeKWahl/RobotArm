@@ -14,8 +14,11 @@ from RobotArmController import control_robot_arm, handle_message_from_controller
 from Configuration import (
     SW_VERSION,
     HUB_NAME_SHOULDER_CONTROLLER,
-    HUB_NAME_LOWER_ARM_CONTROLLER
+    HUB_NAME_LOWER_ARM_CONTROLLER,
+    VR_IP_ADDRESS,
+    VR_UDP_PORT
 )
+from UdpManager import UdpManager
 
 PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef" # Bluetooth communication constant
 
@@ -110,10 +113,20 @@ async def main():
                 )
 
 
+            print("Creating UDP manager for communication with the VR app.")
+            vr_UDP_manager = UdpManager(
+                destination_ip = VR_IP_ADDRESS,
+                port_number = VR_UDP_PORT,
+                on_message_received = handle_message_from_VR_to_PC
+            )
+            await vr_UDP_manager.start()
+            send_to_VR_function = vr_UDP_manager.send_UDP_packet
+            print("UDP manager created, ready to send messages to the VR app.")
+
             # Defer to RobotArmController.py for the actual robot arm control logic, and provide it references to the send functions.
-            send_to_VR_function = None # TODO
-            # TODO: Give UdpManager the handle_message_from_VR_to_PC function.
             await control_robot_arm(send_to_lego_hubs, send_to_VR_function)
+
+            await vr_UDP_manager.stop()
 
             print("Done.")
 
