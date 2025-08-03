@@ -54,8 +54,9 @@ class DistanceAndAngleOffset(ctypes.Structure):
 
     # Define pretty printing for debugging:
     def __repr__(self):
-        return (f"XYZ distance: {self.x_distance} {self.y_distance} {self.z_distance}. XYZ angles: { \
-                self.x_angle} {self.y_angle} {self.z_angle}.")
+        return (f"XYZ distance: {self.x_distance} {self.y_distance} {self.z_distance}. "
+                f"XYZ angles: {self.x_angle} {self.y_angle} {self.z_angle}.")
+
 
 
 class MessageFromPcToController(ctypes.Structure):
@@ -163,8 +164,8 @@ def parse_message_from_controller_to_PC(data: bytes) -> MessageFromControllerToP
 
 
 def create_message_from_PC_to_VR(is_connection_to_controllers_ok: bool,
-                                last_known_distance_and_angle_offset: DistanceAndAngleOffset,
-                                last_known_angles: JointAngles) -> bytes:
+                                 last_known_distance_and_angle_offset: DistanceAndAngleOffset,
+                                 last_known_angles: JointAngles) -> bytes:
     """
     Creates a message to send from the PC to the VR app.
 
@@ -196,9 +197,9 @@ def create_message_from_PC_to_VR(is_connection_to_controllers_ok: bool,
     # Convert each 16-bit field to big-endian
     for i in range(6):  # 6 int16 fields in DistanceAndAngleOffset
         field_offset = offset_base + i * 2
-        value = int.from_bytes(result[field_offset:field_offset+2], 'little')
-        result[field_offset:field_offset+2] = value.to_bytes(2, 'big', signed=True)
-    
+        value = int.from_bytes(bytes=result[field_offset:field_offset+2], byteorder='little', signed=True)
+        result[field_offset:field_offset+2] = value.to_bytes(length=2, byteorder='big', signed=True)
+
     return bytes(result)
 
 

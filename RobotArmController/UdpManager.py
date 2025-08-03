@@ -63,7 +63,6 @@ class UdpManager:
             self.socket.sendto(data, (self.destination_ip, self.port_number))
         except Exception as e:
             print(f"Failed to send UDP packet: {e}")
-        finally:
             if self.socket:
                 self.socket.close()
                 print("UDP socket closed")

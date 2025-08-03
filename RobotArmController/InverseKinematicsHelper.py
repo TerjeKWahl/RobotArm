@@ -54,15 +54,23 @@ async def calculate_distance_and_angle_offset(joint_angles : JointAngles) -> Dis
     """
     Calculate the distance and angle offset for the robot arm based on the last known angles.
     """
-    position_and_angle_se3 = robot_arm.fkine(joint_angles)
+    q = np.array([
+        joint_angles.shoulder_forward,
+        joint_angles.shoulder_out,
+        joint_angles.overarm,
+        joint_angles.elbow,
+        joint_angles.underarm,
+        joint_angles.wrist
+    ])
+    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
     xyz_angles = position_and_angle_se3.eul(unit='deg') # Get rotation around the Z, Y and Z axes for the solution. TODO: Fix/test correctness of ordering of rotations
     return DistanceAndAngleOffset(
-        x_distance = position_and_angle_se3.t[0],
-        y_distance = position_and_angle_se3.t[1],
-        z_distance = position_and_angle_se3.t[2],
-        x_angle = xyz_angles[0],
-        y_angle = xyz_angles[1],
-        z_angle = xyz_angles[2]
+        x_distance = int(position_and_angle_se3.t[0]),
+        y_distance = int(position_and_angle_se3.t[1]),
+        z_distance = int(position_and_angle_se3.t[2]),
+        x_angle = int(xyz_angles[0]),
+        y_angle = int(xyz_angles[1]),
+        z_angle = int(xyz_angles[2])
     )
 
 

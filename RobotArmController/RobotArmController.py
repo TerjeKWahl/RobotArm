@@ -89,8 +89,9 @@ async def control_robot_arm_vr_following_mode():
         #print("Message sent to the hub.")
 
         # TODO: Send messages to VR not all the time, but on regular intervals.
-        last_known_distance_and_angle_offset = calculate_distance_and_angle_offset(last_known_angles)
-        message_to_VR = await create_message_from_PC_to_VR(
+        last_known_distance_and_angle_offset = await calculate_distance_and_angle_offset(last_known_angles)
+        print(f"Calculated last known distance and angle offset: {last_known_distance_and_angle_offset}")
+        message_to_VR = create_message_from_PC_to_VR(
             is_connection_to_controllers_ok = True,
             last_known_distance_and_angle_offset = last_known_distance_and_angle_offset,
             last_known_angles = last_known_angles
