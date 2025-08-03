@@ -11,11 +11,14 @@ import asyncio
 from contextlib import suppress
 from bleak import BleakScanner, BleakClient
 from RobotArmController import control_robot_arm, handle_message_from_controller_to_PC
+from Configuration import (
+    SW_VERSION,
+    HUB_NAME_SHOULDER_CONTROLLER,
+    HUB_NAME_LOWER_ARM_CONTROLLER
+)
 
-SW_VERSION = "0.2.0"  # Software version of this program
-PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef"
-HUB_NAME_SHOULDER_CONTROLLER = "Pybricks Hub"
-HUB_NAME_LOWER_ARM_CONTROLLER = "Pybricks hub 2"
+PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef" # Bluetooth communication constant
+
 
 
 async def main():
@@ -45,7 +48,7 @@ async def main():
                 print("Received 'rdy' from the first hub.")
                 lego_hub_ready_event_1.set()
             else:
-                print("Received:", payload)
+                #print("Received:", payload)
                 handle_message_from_controller_to_PC(payload)
 
 
@@ -57,7 +60,7 @@ async def main():
                 print("Received 'rdy' from the second hub.")
                 lego_hub_ready_event_2.set()
             else:
-                print("Received:", payload)
+                #print("Received:", payload)
                 handle_message_from_controller_to_PC(payload)
 
 

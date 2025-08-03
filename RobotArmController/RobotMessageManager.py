@@ -52,6 +52,12 @@ class DistanceAndAngleOffset(ctypes.Structure):
         ("z_angle", ctypes.c_int16)      # Z angle offset in degrees
     ]
 
+    # Define pretty printing for debugging:
+    def __repr__(self):
+        return (f"DistanceAndAngleOffset(x_distance={self.x_distance}, "
+                f"y_distance={self.y_distance}, z_distance={self.z_distance}, "
+                f"x_angle={self.x_angle}, y_angle={self.y_angle}, z_angle={self.z_angle})")
+
 
 class MessageFromPcToController(ctypes.Structure):
     _fields_ = [
