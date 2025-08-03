@@ -21,7 +21,7 @@ The numbering in the two lists below represent byte numbers.
 3.  API version, 1
 4.  int8, requested movement mode:  
     - 1 = move all joints as fast as possible (for continuous tracking)
-    - 2 = move to target with smooth accelleration and decelleration (run to target)
+    - 2 = move to target with smooth acceleration and deceleration (run to target)
     - 3 = calibration mode
     - 4 = return to standard/zero angles, and exit
 5.  int8, desired angle for gripper

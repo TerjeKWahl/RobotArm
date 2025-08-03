@@ -6,8 +6,13 @@ illegal values.
 from ustruct import unpack, pack
 
 REC_MSG_LENGTH = 18
-MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT = 4
 UNKNOWN_ANGLE = -128
+
+# Movement mode constants
+MOVEMENT_MODE_MOVE_FAST = 1
+MOVEMENT_MODE_RUN_TO_TARGET = 2
+MOVEMENT_MODE_CALIBRATION = 3  # Not used so far
+MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT = 4
 
 # Information source constants
 INFORMATION_SOURCE_HUB_1 = 10  # Lego Technic Hub 1 (lower arm)
@@ -144,6 +149,12 @@ def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromP
         return False, message
     if message.api_version != 1:
         print(f"Invalid API version: Got {data[2]} but expected 1")
+        return False, message
+    if message.movement_mode not in (MOVEMENT_MODE_MOVE_FAST, MOVEMENT_MODE_RUN_TO_TARGET, \
+                                     MOVEMENT_MODE_CALIBRATION, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT):
+        print(f"Invalid movement mode: Got {message.movement_mode} but expected one of { \
+            MOVEMENT_MODE_MOVE_FAST}, {MOVEMENT_MODE_RUN_TO_TARGET}, {MOVEMENT_MODE_CALIBRATION}, { \
+            MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT}")
         return False, message
 
     return True, message

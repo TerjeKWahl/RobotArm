@@ -12,8 +12,10 @@ from usys import stdin, stdout
 from uselect import poll, POLLIN
 from micropython import kbd_intr
 from RobotMessageBuilderEmbedded import JointAngles, MessageFromPCToController, \
-     parse_message_from_PC_to_controller, REC_MSG_LENGTH, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT, \
-     INFORMATION_SOURCE_HUB_1, create_message_from_controller_to_PC
+     parse_message_from_PC_to_controller, create_message_from_controller_to_PC, \
+     INFORMATION_SOURCE_HUB_1, REC_MSG_LENGTH, \
+     MOVEMENT_MODE_MOVE_FAST, MOVEMENT_MODE_RUN_TO_TARGET, \
+     MOVEMENT_MODE_CALIBRATION, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT
 
 PRINT_DEBUG_INFO = False # Set to True to enable debug messages via printing to stdout. This will interfere with Bluetooth communication that also uses stdout!
 
@@ -160,16 +162,27 @@ while True:
         last_known_angles.shoulder_out = message.last_known_angles.shoulder_out
         last_known_angles.shoulder_forward = message.last_known_angles.shoulder_forward
 
-        if message.movement_mode == MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT:
-            break
-
         # TODO: On first received good message, activate a timeout that returns motors to starting position if communication stops (message not reveived for X ms)? (tapping into the wait loop above)
 
         # Now move as instructed:
-        wrist.run_target(   1500, message.desired_angles.wrist, then=Stop.HOLD, wait=False)
-        underarm.run_target(1500, message.desired_angles.underarm, then=Stop.HOLD, wait=False)
-        elbow.run_target(   1500, message.desired_angles.elbow, then=Stop.HOLD, wait=False)
-        overarm.run_target( 1500, message.desired_angles.overarm, then=Stop.HOLD, wait=False)
+        if message.movement_mode == MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT:
+            break
+        elif message.movement_mode == MOVEMENT_MODE_MOVE_FAST:
+            # Move all joints as fast as possible (for continuous tracking)
+            wrist.track_target(message.desired_angles.wrist)
+            underarm.track_target(message.desired_angles.underarm)
+            elbow.track_target(message.desired_angles.elbow)
+            overarm.track_target(message.desired_angles.overarm)
+        elif message.movement_mode == MOVEMENT_MODE_RUN_TO_TARGET:
+            # Move to target with smooth acceleration and deceleration (run to target)
+            wrist.run_target(   1500, message.desired_angles.wrist, then=Stop.HOLD, wait=False)
+            underarm.run_target(1500, message.desired_angles.underarm, then=Stop.HOLD, wait=False)
+            elbow.run_target(   1500, message.desired_angles.elbow, then=Stop.HOLD, wait=False)
+            overarm.run_target( 1500, message.desired_angles.overarm, then=Stop.HOLD, wait=False)
+        elif message.movement_mode == MOVEMENT_MODE_CALIBRATION:
+            print_debug("Calibration mode is not implemented.")
+        else:
+            print_debug(f"WARNING: Unknown movement mode: {message.movement_mode}. Ignoring the command.")
 
     # Send last known angles every 100 ms, also here (in addition to in the receive wait loop) to 
     # ensure we don't miss updates in case of frequent incoming messages
