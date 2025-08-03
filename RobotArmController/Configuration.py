@@ -47,5 +47,5 @@ robot_arm = E1 * E2 * E3 * E4 * E5 * E6 * E7 * E8 * E9 * E10 * E11 * E12 * E13
 
 # Robot initial position and orientation
 neutral_pose_with_bent_elbow_q = np.array([0, 0, 0, 0, 0, 0])
-neutral_pose_SE3 = robot_arm.fkine(neutral_pose_with_bent_elbow_q)  # Calculate the forward kinematics of the neutral pose with a bent elbow
+NEUTRAL_POSE_SE3 = robot_arm.fkine(neutral_pose_with_bent_elbow_q)  # Calculate the forward kinematics of the neutral pose with a bent elbow
 
