@@ -54,9 +54,8 @@ class DistanceAndAngleOffset(ctypes.Structure):
 
     # Define pretty printing for debugging:
     def __repr__(self):
-        return (f"DistanceAndAngleOffset(x_distance={self.x_distance}, "
-                f"y_distance={self.y_distance}, z_distance={self.z_distance}, "
-                f"x_angle={self.x_angle}, y_angle={self.y_angle}, z_angle={self.z_angle})")
+        return (f"XYZ distance: {self.x_distance} {self.y_distance} {self.z_distance}. XYZ angles: { \
+                self.x_angle} {self.y_angle} {self.z_angle}.")
 
 
 class MessageFromPcToController(ctypes.Structure):
@@ -169,7 +168,7 @@ def create_message_from_PC_to_VR(is_connection_to_controllers_ok: bool,
     """
     Creates a message to send from the PC to the VR app.
 
-    :param connection_status: 0 = Not connected to controllers, 1 = Connected to controllers
+    :param is_connection_to_controllers_ok: False = Not connected to controllers, True = Connected to controllers
     :param last_known_distance_and_angle_offset: The last known distance and angle offsets
     :param last_known_angles: The last known joint angles
     :return: A byte array representing the message with proper big-endian encoding

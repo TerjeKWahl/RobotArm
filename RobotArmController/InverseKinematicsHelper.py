@@ -50,6 +50,23 @@ async def __get_current_pose(last_known_angles: JointAngles) -> List[int]:
 
 
 
+async def calculate_distance_and_angle_offset(joint_angles : JointAngles) -> DistanceAndAngleOffset:
+    """
+    Calculate the distance and angle offset for the robot arm based on the last known angles.
+    """
+    position_and_angle_se3 = robot_arm.fkine(joint_angles)
+    xyz_angles = position_and_angle_se3.eul(unit='deg') # Get rotation around the Z, Y and Z axes for the solution. TODO: Fix/test correctness of ordering of rotations
+    return DistanceAndAngleOffset(
+        x_distance = position_and_angle_se3.t[0],
+        y_distance = position_and_angle_se3.t[1],
+        z_distance = position_and_angle_se3.t[2],
+        x_angle = xyz_angles[0],
+        y_angle = xyz_angles[1],
+        z_angle = xyz_angles[2]
+    )
+
+
+
 async def calculate_inverse_kinematics(last_known_angles: JointAngles, 
                                        desired_distance_and_angle_offset: DistanceAndAngleOffset) -> JointAngles: 
     """
@@ -127,4 +144,3 @@ async def calculate_inverse_kinematics(last_known_angles: JointAngles,
 
     # Return the desired angles
     return desired_angles
-

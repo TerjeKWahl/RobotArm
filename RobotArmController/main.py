@@ -10,7 +10,7 @@ from time import sleep
 import asyncio
 from contextlib import suppress
 from bleak import BleakScanner, BleakClient
-from RobotArmController import control_robot_arm, handle_message_from_controller_to_PC
+from RobotArmController import control_robot_arm, handle_message_from_controller_to_PC, handle_message_from_VR_to_PC
 from Configuration import (
     SW_VERSION,
     HUB_NAME_SHOULDER_CONTROLLER,
@@ -110,8 +110,10 @@ async def main():
                 )
 
 
-            # Defer to RobotArmController.py for the actual robot arm control logic, and provide it the send() function.
-            await control_robot_arm(send_to_lego_hubs)
+            # Defer to RobotArmController.py for the actual robot arm control logic, and provide it references to the send functions.
+            send_to_VR_function = None # TODO
+            # TODO: Give UdpManager the handle_message_from_VR_to_PC function.
+            await control_robot_arm(send_to_lego_hubs, send_to_VR_function)
 
             print("Done.")
 

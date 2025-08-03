@@ -5,11 +5,12 @@ It can run in different modes depending on a constant: Demo mode or VR following
 
 import asyncio
 import threading
-from RobotMessageManager import create_message_from_PC_to_controller, MovementMode, JointAngles, \
-    parse_message_from_controller_to_PC, InformationSource, DistanceAndAngleOffset, UNKNOWN_ANGLE
+from RobotMessageManager import create_message_from_PC_to_controller, parse_message_from_controller_to_PC, \
+    create_message_from_PC_to_VR, parse_message_from_VR_to_PC, \
+    MovementMode, JointAngles, InformationSource, DistanceAndAngleOffset, UNKNOWN_ANGLE
 from RunMode import RunMode
 from Configuration import RUN_MODE
-from InverseKinematicsHelper import calculate_inverse_kinematics
+from InverseKinematicsHelper import calculate_inverse_kinematics, calculate_distance_and_angle_offset
 
 
 desired_angles = JointAngles(
@@ -39,17 +40,19 @@ desired_distance_and_angle_offset = DistanceAndAngleOffset(
     z_angle = 0
 )
 
-# define a function pointer to send data to the hub
+# define function pointers to send data to the Lego hubs (Bluetooth) and VR app (UDP).
 send_to_lego_hubs = None  # This will be set later when the Bluetooth connection is established.
+send_to_VR = None         # This will be set later from the caller of control_robot_arm() (main program).
 
 # Thread lock for protecting shared state
 _state_lock = threading.Lock()
 
 
 
-async def control_robot_arm(send_to_lego_hubs_function):
-    global send_to_lego_hubs
+async def control_robot_arm(send_to_lego_hubs_function, send_to_VR_function):
+    global send_to_lego_hubs, send_to_VR
     send_to_lego_hubs = send_to_lego_hubs_function
+    send_to_VR = send_to_VR_function
     print("Starting to control the robot arm...")
     if RUN_MODE == RunMode.DEMO_MODE:
         await control_robot_arm_demo_mode()
@@ -76,14 +79,23 @@ async def control_robot_arm_vr_following_mode():
             if new_desired_angles:
                 desired_angles = new_desired_angles
 
-        message = create_message_from_PC_to_controller(
+        message_to_controller = create_message_from_PC_to_controller(
             movement_mode=MovementMode.MOVE_FAST,
             desired_angles=desired_angles,
             last_known_angles=last_known_angles
         )
         #print("Sending message to the hub:", message)
-        await send_to_lego_hubs(message)
+        await send_to_lego_hubs(message_to_controller)
         #print("Message sent to the hub.")
+
+        # TODO: Send messages to VR not all the time, but on regular intervals.
+        last_known_distance_and_angle_offset = calculate_distance_and_angle_offset(last_known_angles)
+        message_to_VR = await create_message_from_PC_to_VR(
+            is_connection_to_controllers_ok = True,
+            last_known_distance_and_angle_offset = last_known_distance_and_angle_offset,
+            last_known_angles = last_known_angles
+        )
+        await send_to_VR(message_to_VR)
 
         wait_time_ms = 500 # TODO: Make faster
         await asyncio.sleep(wait_time_ms / 1000)
@@ -193,6 +205,7 @@ async def control_robot_arm_demo_mode():
     print("Exiting the control_robot_arm function.")
 
 
+
 def handle_message_from_controller_to_PC(data: bytes):
     """
     Handle incoming messages from robot arm controllers (Lego hubs or Arduino).
@@ -250,3 +263,25 @@ def handle_message_from_controller_to_PC(data: bytes):
           f"shoulder_out={last_known_angles.shoulder_out}, "
           f"shoulder_forward={last_known_angles.shoulder_forward}")
     """
+
+
+def handle_message_from_VR_to_PC(data: bytes):
+    """
+    Handle incoming messages from VR app.
+    Updates the desired_distance_and_angle_offset based on the received data.
+    
+    :param data: Raw bytes received from VR app
+    """
+    global desired_distance_and_angle_offset
+
+    # Parse the message
+    message = parse_message_from_VR_to_PC(data)
+    if message is None:
+        print("Failed to parse message from VR app")
+        return
+        
+    # Update desired_distance_and_angle_offset
+    with _state_lock:
+        desired_distance_and_angle_offset = message.desired_distance_and_angle_offset
+
+    print(f"Received updated distance and angle offset from VR app: {desired_distance_and_angle_offset}")
