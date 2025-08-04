@@ -5,6 +5,11 @@ public class UITextUpdater : MonoBehaviour
 {
     public GameObject RobotGripper;
     private TMP_Text textMeshPro;
+    private const int FRAMES_SEND_MESSAGE_PERIOD = 30; // TODO: Move to config file
+    private const string PC_IP_ADDRESS = "192.168.0.43"; // TODO: Move to config file
+    private const int PC_PORT_NUMBER = 7506; // TODO: Move to config file
+    private UdpManager udpManager = new UdpManager(PC_IP_ADDRESS, PC_PORT_NUMBER); 
+    private RobotMessageManager robotMessageManager = new RobotMessageManager();
     private Matrix4x4 startPositionMatrix = Matrix4x4.zero;
     // Definition of transformation matrix for conversion from 
     // Unity's coordinate system (x-right, y-up, z-forward)
@@ -79,15 +84,15 @@ public class UITextUpdater : MonoBehaviour
             Vector3 position = RobotGripper.transform.position;
             Vector3 rotation = RobotGripper.transform.eulerAngles;
             // Convert to mm, and note the x,y,z axis changes because of different coordinate system for robot arm:
-            float posX = (position.z - startPosition.z) * 1000; 
+            float posX = (position.z - startPosition.z) * 1000;
             float posY = (position.x - startPosition.x) * -1000;
             float posZ = (position.y - startPosition.y) * 1000;
             float rotX = rotation.x - startRotation.x;
             float rotY = rotation.z - startRotation.z;
             float rotZ = rotation.y - startRotation.y;
-            if(rotX > 180) rotX -= 360; // Want to keep the range of rotation values between -180 and 180 degrees
-            if(rotY > 180) rotY -= 360;
-            if(rotZ > 180) rotZ -= 360;
+            if (rotX > 180) rotX -= 360; // Want to keep the range of rotation values between -180 and 180 degrees
+            if (rotY > 180) rotY -= 360;
+            if (rotZ > 180) rotZ -= 360;
 
             // Format position and rotation strings
             string posXStr = FormatNumber(posX);
@@ -104,7 +109,7 @@ public class UITextUpdater : MonoBehaviour
                            $"Z is up\n" +
                            //$"Start pos matrix: \n{startPositionMatrix}.\n" +
                            //$"translationAndRotationMatrix: \n{translationAndRotationMatrix}.\n" +
-                           $"Current pos matrix: \n{positionMatrix}.\n" +
+                           $"Current pos matrix: \n{positionMatrix}.\n"
                            //$"Offset matrix: \n{offsetMatrix}.\n" +
                            //$"Converted matrix: \n{convertedMatrix}.\n" +
                            //$"RobotGripper.transform.localScale: {RobotGripper.transform.localScale}.\n"
@@ -114,6 +119,13 @@ public class UITextUpdater : MonoBehaviour
                            //$"Controllers:	Not connected\n" +
                            ;
             textMeshPro.text = text;
+            
+            // Send UDP packet, but only every FRAMES_SEND_MESSAGE_PERIOD frames to avoid flooding the network
+            if (Time.frameCount % FRAMES_SEND_MESSAGE_PERIOD == 0)
+            {
+                byte[] messageBytes = robotMessageManager.CreateMessageFromVRToPC(positionMatrix);
+                udpManager.SendMessage(messageBytes);
+            }
         }
     }
 }

@@ -118,6 +118,9 @@ class MessageFromVRToPC(ctypes.Structure):
         ("prefix_w", ctypes.c_char),
         ("api_version", ctypes.c_int8),
         ("information_source", ctypes.c_int8),
+        ("reserved_1", ctypes.c_int8),
+        ("reserved_2", ctypes.c_int8),
+        ("reserved_3", ctypes.c_int8),
         ("matrix_4x4", Matrix4x4)
     ]
 

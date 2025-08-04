@@ -86,7 +86,10 @@ Offsets mean in relation to the initial starting position of the robot arm.
 4.  API version, 1
 5.  int8, information source:  
     - 20 = VR app
-6.  Bytes number 6 to 134: 16 double floating point numbers, representing the 4 x 4 matrix 
+6.  (Reserved for future use, extra byte to avoid bugs due to struct packing.)
+7.  (Reserved for future use, extra byte to avoid bugs due to struct packing.)
+8.  (Reserved for future use, extra byte to avoid bugs due to struct packing.)
+9.  Bytes number 9 to 136: 16 double floating point numbers, representing the 4 x 4 matrix 
     describing the position and rotation of the VR gripper.
     16 doubles * 8 bytes/double = 128 bytes.
     The numbers are row first, so the first 4 numbers represent the first row, etc.
