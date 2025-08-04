@@ -280,9 +280,10 @@ def handle_message_from_VR_to_PC(data: bytes):
     if message is None:
         print("Failed to parse message from VR app")
         return
-        
-    # Update desired_distance_and_angle_offset
-    with _state_lock:
-        desired_distance_and_angle_offset = message.desired_distance_and_angle_offset
 
-    print(f"Received updated distance and angle offset from VR app: {desired_distance_and_angle_offset}")
+    print(f"Received message from VR app with the following 4x4 matrix: \n{message.matrix_4x4}")
+
+    # Update desired_distance_and_angle_offset
+    # TODO fix: with _state_lock:
+    #    desired_distance_and_angle_offset = message.desired_distance_and_angle_offset
+    #print(f"Received updated distance and angle offset from VR app: {desired_distance_and_angle_offset}")

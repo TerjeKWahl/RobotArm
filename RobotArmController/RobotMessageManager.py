@@ -58,6 +58,23 @@ class DistanceAndAngleOffset(ctypes.Structure):
                 f"XYZ angles: {self.x_angle} {self.y_angle} {self.z_angle}.")
 
 
+# Define struct for 4x4 matrix (used in VR-PC communication):
+class Matrix4x4(ctypes.Structure):
+    _fields_ = [
+        ("m00", ctypes.c_double), ("m01", ctypes.c_double), ("m02", ctypes.c_double), ("m03", ctypes.c_double),
+        ("m10", ctypes.c_double), ("m11", ctypes.c_double), ("m12", ctypes.c_double), ("m13", ctypes.c_double),
+        ("m20", ctypes.c_double), ("m21", ctypes.c_double), ("m22", ctypes.c_double), ("m23", ctypes.c_double),
+        ("m30", ctypes.c_double), ("m31", ctypes.c_double), ("m32", ctypes.c_double), ("m33", ctypes.c_double)
+    ]
+
+    # Define pretty printing for debugging:
+    def __repr__(self):
+        return (f"Matrix4x4:\n"
+                f"[{self.m00:8.3f} {self.m01:8.3f} {self.m02:8.3f} {self.m03:8.3f}]\n"
+                f"[{self.m10:8.3f} {self.m11:8.3f} {self.m12:8.3f} {self.m13:8.3f}]\n"
+                f"[{self.m20:8.3f} {self.m21:8.3f} {self.m22:8.3f} {self.m23:8.3f}]\n"
+                f"[{self.m30:8.3f} {self.m31:8.3f} {self.m32:8.3f} {self.m33:8.3f}]")
+
 
 class MessageFromPcToController(ctypes.Structure):
     _fields_ = [
@@ -101,7 +118,7 @@ class MessageFromVRToPC(ctypes.Structure):
         ("prefix_w", ctypes.c_char),
         ("api_version", ctypes.c_int8),
         ("information_source", ctypes.c_int8),
-        ("desired_distance_and_angle_offset", DistanceAndAngleOffset)
+        ("matrix_4x4", Matrix4x4)
     ]
 
 
@@ -223,18 +240,7 @@ def parse_message_from_VR_to_PC(data: bytes) -> MessageFromVRToPC:
         print(f"Invalid information source: Got {data[4]} but expected {InformationSource.VR_APP}")
         return None
     
-    # Convert big-endian 16-bit fields to little-endian before parsing
-    data_converted = bytearray(data)
-    
-    # Offsets for the 16-bit fields (after 5 single-byte fields: T, K, W, version, source)
-    offset_base = 5
-    
-    # Convert each 16-bit field from big-endian to little-endian
-    for i in range(6):  # 6 int16 fields in DistanceAndAngleOffset
-        field_offset = offset_base + i * 2
-        value = int.from_bytes(data_converted[field_offset:field_offset+2], 'big', signed=True)
-        data_converted[field_offset:field_offset+2] = value.to_bytes(2, 'little', signed=True)
-    
-    # Create a MessageFromVRToPC object from the converted byte array
-    message = MessageFromVRToPC.from_buffer_copy(data_converted)
+    # Create a MessageFromVRToPC object from the byte array
+    # Matrix4x4 doubles are already in the correct byte order (no conversion needed)
+    message = MessageFromVRToPC.from_buffer_copy(data)
     return message

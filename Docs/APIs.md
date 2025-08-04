@@ -86,18 +86,10 @@ Offsets mean in relation to the initial starting position of the robot arm.
 4.  API version, 1
 5.  int8, information source:  
     - 20 = VR app
-6.  int16 MSB, X desired distance offset
-7.  int16 LSB, X desired distance offset
-8.  int16 MSB, Y desired distance offset
-9.  int16 LSB, Y desired distance offset
-10. int16 MSB, Z desired distance offset
-11. int16 LSB, Z desired distance offset
-12. int16 MSB, X desired angle offset
-13. int16 LSB, X desired angle offset
-14. int16 MSB, Y desired angle offset
-15. int16 LSB, Y desired angle offset
-16. int16 MSB, Z desired angle offset
-17. int16 LSB, Z desired angle offset
+6.  Bytes number 6 to 134: 16 double floating point numbers, representing the 4 x 4 matrix 
+    describing the position and rotation of the VR gripper.
+    16 doubles * 8 bytes/double = 128 bytes.
+    The numbers are row first, so the first 4 numbers represent the first row, etc.
 
 
 ### Message from PC to VR:
