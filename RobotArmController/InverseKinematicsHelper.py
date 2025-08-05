@@ -8,7 +8,7 @@ import threading
 from typing import List
 from spatialmath import SE3
 from RobotMessageManager import JointAngles, DistanceAndAngleOffset, Matrix4x4, UNKNOWN_ANGLE
-from Configuration import robot_arm, NEUTRAL_POSE_SE3
+from Configuration import robot_arm, joint_limits_deg, NEUTRAL_POSE_SE3
 
 
 is_first_call = True  # Flag to print robot arm structure only once
@@ -224,31 +224,65 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
     #print("Skipping inverse kinematics for now, please ignore the following error message:")
     #return desired_angles
 
-    mask_priority = np.array([4, 4, 4, 1, 2, 3])  # We want to prioritize the position over the orientation in the IK solution, 
-                                                  # and for orientation we don't prioritize rotation around the X axis (should be along the gripper "fingers" so not too important).
-                                                  # The Y and Z axes are more important for orientation, and we want to prioritize the Z axis (controlled by wrist) over 
-                                                  # the Y axis (controlled by elbow and shoulder forward).
-    #mask_priority = np.array([2, 2, 2, 0, 1, 1])  # We want to prioritize the position over the orientation in the IK solution, 
-    #                                              # and for orientation we don't prioritize rotation around the X axis (should be along the gripper "fingers" so not too important).
-    try:
+    mask_priority_1 = np.array([4, 4, 4, 1, 2, 3])  # We want to prioritize the position over the orientation in the IK solution, 
+                                                    # and for orientation we don't prioritize rotation around the X axis (should be along the gripper "fingers" so not too important).
+                                                    # The Y and Z axes are more important for orientation, and we want to prioritize the Z axis (controlled by wrist) over 
+                                                    # the Y axis (controlled by elbow and shoulder forward).
+    mask_priority_2 = np.array([2, 2, 2, 0, 1, 1])  # We want to prioritize the position over the orientation in the IK solution, 
+                                                    # and for orientation we don't prioritize rotation around the X axis (should be along the gripper "fingers" so not too important).
+    mask_list = [mask_priority_1, mask_priority_2]  # List of masks to try
 
-        # Calculate inverse kinematics to get joint angles
-        inverse_kinematics_solution = robot_arm.ik_LM(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True)
-
-        solution_q, was_successful, iterations, num_searches, residual = inverse_kinematics_solution
-        #print(f"solution_q: {solution_q}")
+    joint_angles_deg = 0
+    was_successful = False
+    for mask_priority in mask_list:
+        print(f"\n\nTrying mask priority: {mask_priority} for desired pose:")
+        # Solve IK (inverse kinematics):
+        joint_angles_solution = robot_arm.ik_LM(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=300, slimit=1000)
+        solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
         joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
-        print(f"Inverse kinematics solution {'SUCCESS' if was_successful else 'FAILED'}")
-        #print(f"Termination status: {reason} (1=success, 0=failure)")
+        print(f"LM Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
         #print(f"Solution found in {iterations} iterations")
         #print(f"Number of searches performed: {num_searches}")
         #print(f"Final residual error: {residual:.6f}")
-        print(f"Solution angles (degrees): {joint_angles_deg}")
-        #print(f"Rotation around the Z, Y and Z axes for the desired_pose: {desired_pose.eul(unit='deg')}")
+        print(f"Joint angles suggested (degrees): {joint_angles_deg}")
+        #print(f"Rotation around the Z, Y and Z axes for the desired_pose_se3: {desired_pose_se3.eul(unit='deg')}")
         #solution_se3 = robot_arm.fkine(solution_q)
-        #print(f"Rotation around the Z, Y and Z axes for the solution:     {solution_se3.eul(unit='deg')}")
-
+        #print(f"Rotation around the Z, Y and Z axes for the solution:    {solution_se3.eul(unit='deg')}")
         if was_successful:
+            break  # If the solution was successful, no need to try other methods
+
+        joint_angles_solution = robot_arm.ik_NR(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=300, slimit=1000, pinv=True)
+        solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
+        joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
+        print(f"NR Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
+        print(f"Joint angles suggested (degrees): {joint_angles_deg}")
+        if was_successful:
+            break  # If the solution was successful, no need to try other methods
+
+        joint_angles_solution = robot_arm.ik_GN(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=300, slimit=1000, pinv=True)
+        solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
+        joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
+        print(f"GN Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
+        print(f"Joint angles suggested (degrees): {joint_angles_deg}")
+        if was_successful:
+            break  # If the solution was successful, no need to try other methods
+
+    if not was_successful:
+        print("Failed to find inverse kinematics solution - use previous angles")
+    else:
+
+        # Check if solution respects joint limits
+        q_deg = np.rad2deg(solution_q)
+        within_limits = True
+        for i, (q_val, limits) in enumerate(zip(q_deg, joint_limits_deg)):
+            if q_val < limits[0] or q_val > limits[1]:
+                print(f"WARNING: Joint {i+1} angle {q_val:.1f}° exceeds limits [{limits[0]}, {limits[1]}]")
+                within_limits = False
+        if not within_limits:
+            print("Inverse kinematics solution exceeds joint limits - use previous angles instead.")
+            desired_angles = None
+        else:
+
             # Update desired angles
             desired_angles = JointAngles()
             desired_angles.shoulder_forward = joint_angles_deg[0]
@@ -257,13 +291,7 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
             desired_angles.elbow = joint_angles_deg[3]
             desired_angles.underarm = joint_angles_deg[4]
             desired_angles.wrist = joint_angles_deg[5]
-        else:
-            print("Failed to find inverse kinematics solution - use previous angles")
             
-    except Exception as e:
-        print(f"Error in inverse kinematics calculation: {e}")
-        print("Use previous desired angles")
-
 
     # Return the desired angles
     return desired_angles
