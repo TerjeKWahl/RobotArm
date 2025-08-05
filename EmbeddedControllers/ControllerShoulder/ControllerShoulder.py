@@ -17,6 +17,7 @@ from RobotMessageBuilderEmbedded import JointAngles, MessageFromPCToController, 
      MOVEMENT_MODE_CALIBRATION, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT
 
 PRINT_DEBUG_INFO = False # Set to True to enable debug messages via printing to stdout. This will interfere with Bluetooth communication that also uses stdout!
+SEND_PERIOD_MS = 33 # How often to send current angles to the PC app
 
 hub = TechnicHub()
 stopwatch = StopWatch()
@@ -102,14 +103,17 @@ while True:
     # Check if data is available
     while not stdin_event_monitor.poll(0):
         current_time = stopwatch.time()
-        if current_time - last_receive_time > 1000:
+        if current_time - last_receive_time > 3000:
             if not is_timeout_already_expired:
                 hub.light.blink(Color.VIOLET,[600,200]) # Violet blinking to indicate waiting for connection/data to begin or resume.
                 is_timeout_already_expired = True
+                # Move back to start position when no message is received for a while
+                a.run_target(1500, 0, then=Stop.HOLD, wait=False)
+                b.run_target(1500, 0, then=Stop.HOLD, wait=False)
         
-        # Send last known angles every 100 ms
-        if current_time - last_send_time >= 100:
-            send_current_angles_to_pc(last_known_angles)            
+        # Send last known angles every SEND_PERIOD_MS ms
+        if current_time - last_send_time >= SEND_PERIOD_MS:
+            send_current_angles_to_pc(last_known_angles)
             last_send_time = current_time
         
         wait(10)
@@ -153,9 +157,9 @@ while True:
         else:
             print_debug(f"WARNING: Unknown movement mode: {message.movement_mode}. Ignoring the command.")
 
-    # Send last known angles every 100 ms, also here (in addition to in the receive wait loop) to 
+    # Send last known angles every SEND_PERIOD_MS ms, also here (in addition to in the receive wait loop) to
     # ensure we don't miss updates in case of frequent incoming messages
-    if current_time - last_send_time >= 100:
+    if current_time - last_send_time >= SEND_PERIOD_MS:
         send_current_angles_to_pc(last_known_angles)            
         last_send_time = current_time
     
