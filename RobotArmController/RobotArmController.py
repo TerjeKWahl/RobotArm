@@ -74,9 +74,10 @@ async def control_robot_arm_vr_following_mode():
             if new_desired_angles is None:
                 #print("Failed to calculate desired angles from VR position and orientation matrix")
                 pass
-            with _state_lock:
-                desired_angles = new_desired_angles
-            print(f"Updated desired angles from VR gripper position: {desired_angles}")
+            else:
+                with _state_lock:
+                    desired_angles = new_desired_angles
+                print(f"Updated desired angles from VR gripper position: {desired_angles}")
 
         message_to_controller = create_message_from_PC_to_controller(
             movement_mode=MovementMode.MOVE_FAST,
@@ -104,7 +105,7 @@ async def control_robot_arm_vr_following_mode():
             await send_to_VR_task
         send_to_VR_task = asyncio.create_task(send_to_VR(message_to_VR))
 
-        wait_time_ms = 200 # TODO: Make faster
+        wait_time_ms = 50 # TODO: Make faster and move this to a configuration constant.
         await asyncio.sleep(wait_time_ms / 1000)
 
 

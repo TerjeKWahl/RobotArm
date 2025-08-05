@@ -106,16 +106,20 @@ async def main():
                 """Send data to the two hubs."""
                 # Send the same data to both hubs.
                 with _concurrency_lock:
-                    await bluetooth_client_1.write_gatt_char(
-                        PYBRICKS_COMMAND_EVENT_CHAR_UUID,
-                        b"\x06" + data,  # prepend "write stdin" command (0x06)
-                        response=False
-                    ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
+                    # Send to both hubs concurrently:
+                    write_to_bt_client_1_task = asyncio.create_task(
+                        bluetooth_client_1.write_gatt_char(
+                            PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+                            b"\x06" + data,  # prepend "write stdin" command (0x06)
+                            response=False
+                        ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
+                    )
                     await bluetooth_client_2.write_gatt_char(
                         PYBRICKS_COMMAND_EVENT_CHAR_UUID,
                         b"\x06" + data,  # prepend "write stdin" command (0x06)
                         response=False
                     )
+                    await write_to_bt_client_1_task # Make sure the first write is also done before returning.
 
 
             print("Creating UDP manager for communication with the VR app.")
