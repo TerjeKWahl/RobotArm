@@ -40,6 +40,13 @@ class JointAngles(ctypes.Structure):
         ("shoulder_forward", ctypes.c_int8)
     ]
 
+    # Define pretty printing for debugging:
+    def __repr__(self):
+        return (f"Gripper: {self.gripper}, Wrist: {self.wrist}, Underarm: {self.underarm}, "
+                f"Elbow: {self.elbow}, Overarm: {self.overarm}, Shoulder out: {self.shoulder_out}, "
+                f"Shoulder forward: {self.shoulder_forward}")
+
+
 
 # Define struct for distance and angle offsets (used in VR-PC communication):
 class DistanceAndAngleOffset(ctypes.Structure):

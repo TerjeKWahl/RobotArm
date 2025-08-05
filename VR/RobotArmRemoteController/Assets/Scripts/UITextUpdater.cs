@@ -5,10 +5,10 @@ public class UITextUpdater : MonoBehaviour
 {
     public GameObject RobotGripper;
     private TMP_Text textMeshPro;
-    private const int FRAMES_SEND_MESSAGE_PERIOD = 30; // TODO: Move to config file
+    private const int FRAMES_SEND_MESSAGE_PERIOD = 15; // TODO: Move to config file
     private const string PC_IP_ADDRESS = "192.168.0.43"; // TODO: Move to config file
     private const int PC_PORT_NUMBER = 7506; // TODO: Move to config file
-    private UdpManager udpManager = new UdpManager(PC_IP_ADDRESS, PC_PORT_NUMBER); 
+    private readonly UdpManager udpManager = new UdpManager(PC_IP_ADDRESS, PC_PORT_NUMBER); 
     private RobotMessageManager robotMessageManager = new RobotMessageManager();
     private Matrix4x4 startPositionMatrix = Matrix4x4.zero;
     // Definition of transformation matrix for conversion from 

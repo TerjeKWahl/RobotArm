@@ -217,7 +217,7 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
         pos_in_robot_coordinate_system_se3 = SE3(NEUTRAL_POSE_SE3)
 
     desired_pose_se3 = pos_in_robot_coordinate_system_se3
-    print(f"desired_pose_se3: \n{desired_pose_se3}")
+    #print(f"desired_pose_se3: \n{desired_pose_se3}")
     current_pose_q = __get_current_pose(last_known_angles)
     desired_angles = None
 
@@ -235,40 +235,43 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
     joint_angles_deg = 0
     was_successful = False
     for mask_priority in mask_list:
-        print(f"\n\nTrying mask priority: {mask_priority} for desired pose:")
+        #print(f"\n\nTrying mask priority: {mask_priority} for desired pose:")
+
         # Solve IK (inverse kinematics):
-        joint_angles_solution = robot_arm.ik_LM(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=300, slimit=1000)
+        joint_angles_solution = robot_arm.ik_LM(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100)
         solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
-        joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
-        print(f"LM Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
-        #print(f"Solution found in {iterations} iterations")
-        #print(f"Number of searches performed: {num_searches}")
-        #print(f"Final residual error: {residual:.6f}")
-        print(f"Joint angles suggested (degrees): {joint_angles_deg}")
-        #print(f"Rotation around the Z, Y and Z axes for the desired_pose_se3: {desired_pose_se3.eul(unit='deg')}")
-        #solution_se3 = robot_arm.fkine(solution_q)
-        #print(f"Rotation around the Z, Y and Z axes for the solution:    {solution_se3.eul(unit='deg')}")
+        #print(f"LM Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}", end='. ')
         if was_successful:
+            joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
+            #print(f"Solution found in {iterations} iterations")
+            #print(f"Number of searches performed: {num_searches}")
+            #print(f"Final residual error: {residual:.6f}")
+            #print(f"Joint angles suggested (degrees): {joint_angles_deg}")
+            #print(f"Rotation around the Z, Y and Z axes for the desired_pose_se3: {desired_pose_se3.eul(unit='deg')}")
+            #solution_se3 = robot_arm.fkine(solution_q)
+            #print(f"Rotation around the Z, Y and Z axes for the solution:    {solution_se3.eul(unit='deg')}")
             break  # If the solution was successful, no need to try other methods
 
-        joint_angles_solution = robot_arm.ik_NR(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=300, slimit=1000, pinv=True)
+        """
+        joint_angles_solution = robot_arm.ik_NR(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100, pinv=True)
         solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
-        joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
         print(f"NR Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
-        print(f"Joint angles suggested (degrees): {joint_angles_deg}")
         if was_successful:
+            joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
+            print(f"Joint angles suggested (degrees): {joint_angles_deg}")
             break  # If the solution was successful, no need to try other methods
 
-        joint_angles_solution = robot_arm.ik_GN(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=300, slimit=1000, pinv=True)
+        joint_angles_solution = robot_arm.ik_GN(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100, pinv=True)
         solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
-        joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
         print(f"GN Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
-        print(f"Joint angles suggested (degrees): {joint_angles_deg}")
         if was_successful:
+            joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
+            print(f"Joint angles suggested (degrees): {joint_angles_deg}")
             break  # If the solution was successful, no need to try other methods
+        """
 
     if not was_successful:
-        print("Failed to find inverse kinematics solution - use previous angles")
+        print("!!!!! WARNING !!!!!! Failed to find inverse kinematics solution - use previous angles")
     else:
 
         # Check if solution respects joint limits

@@ -8,6 +8,7 @@ the RobotArmController/RobotArmController.py file.
 
 from time import sleep
 import asyncio
+import threading
 from contextlib import suppress
 from bleak import BleakScanner, BleakClient
 from RobotArmController import control_robot_arm, handle_message_from_controller_to_PC, handle_message_from_VR_to_PC
@@ -21,6 +22,9 @@ from Configuration import (
 from UdpManager import UdpManager
 
 PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef" # Bluetooth communication constant
+
+# Thread lock for protecting against concurrent execution
+_concurrency_lock = threading.Lock()
 
 
 
@@ -101,16 +105,17 @@ async def main():
             async def send_to_lego_hubs(data):
                 """Send data to the two hubs."""
                 # Send the same data to both hubs.
-                await bluetooth_client_1.write_gatt_char(
-                    PYBRICKS_COMMAND_EVENT_CHAR_UUID,
-                    b"\x06" + data,  # prepend "write stdin" command (0x06)
-                    response=True
-                ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
-                await bluetooth_client_2.write_gatt_char(
-                    PYBRICKS_COMMAND_EVENT_CHAR_UUID,
-                    b"\x06" + data,  # prepend "write stdin" command (0x06)
-                    response=True
-                )
+                with _concurrency_lock:
+                    await bluetooth_client_1.write_gatt_char(
+                        PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+                        b"\x06" + data,  # prepend "write stdin" command (0x06)
+                        response=False
+                    ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
+                    await bluetooth_client_2.write_gatt_char(
+                        PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+                        b"\x06" + data,  # prepend "write stdin" command (0x06)
+                        response=False
+                    )
 
 
             print("Creating UDP manager for communication with the VR app.")
