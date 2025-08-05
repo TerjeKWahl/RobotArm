@@ -18,7 +18,7 @@ from RobotMessageBuilderEmbedded import JointAngles, MessageFromPCToController, 
      MOVEMENT_MODE_CALIBRATION, MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT
 
 PRINT_DEBUG_INFO = False # Set to True to enable debug messages via printing to stdout. This will interfere with Bluetooth communication that also uses stdout!
-SEND_PERIOD_MS = 33 # How often to send current angles to the PC app
+SEND_PERIOD_MS = 20 # How often to send current angles to the PC app
 
 hub = TechnicHub()
 stopwatch = StopWatch()
@@ -147,7 +147,7 @@ while True:
             send_current_angles_to_pc(last_known_angles)
             last_send_time = current_time
         
-        wait(10)
+        wait(1)
 
     # Read message from stdin
     num_bytes_read = stdin.buffer.readinto(receive_buffer, REC_MSG_LENGTH)

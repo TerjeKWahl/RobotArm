@@ -105,7 +105,7 @@ async def control_robot_arm_vr_following_mode():
             await send_to_VR_task
         send_to_VR_task = asyncio.create_task(send_to_VR(message_to_VR))
 
-        wait_time_ms = 50 # TODO: Make faster and move this to a configuration constant.
+        wait_time_ms = 20 # TODO: Make faster and move this to a configuration constant.
         await asyncio.sleep(wait_time_ms / 1000)
 
 
@@ -288,7 +288,7 @@ def handle_message_from_VR_to_PC(data: bytes):
         print("Failed to parse message from VR app")
         return
 
-    print(f"Received message from VR app.")
+    #print(f"Received message from VR app.")
     #print(f"Received message from VR app with the following 4x4 matrix: \n{message.matrix_4x4}")
 
     with _state_lock:

@@ -2145,8 +2145,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "Position (mm):  (X, Y, Z):     \u20130     \u20130     \u20130\nOrientation
     (\xB0)   (X, Y, Z):     \u20130     \u20130     \u20130\nX is forward\nY is to
-    the left\nZ is up\n\nConnection status:\nPC:\t\tNot connected\nControllers:\tNot
-    connected"
+    the left\nZ is up\n\nCurrent pos matrix:\n[[]\n[]\n[]\n[]]\t"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2173,8 +2172,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 16
-  m_fontSizeBase: 16
+  m_fontSize: 36
+  m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
