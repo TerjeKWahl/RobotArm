@@ -69,8 +69,7 @@ class Matrix4x4(ctypes.Structure):
 
     # Define pretty printing for debugging:
     def __repr__(self):
-        return (f"Matrix4x4:\n"
-                f"[{self.m00:8.3f} {self.m01:8.3f} {self.m02:8.3f} {self.m03:8.3f}]\n"
+        return (f"[{self.m00:8.3f} {self.m01:8.3f} {self.m02:8.3f} {self.m03:8.3f}]\n"
                 f"[{self.m10:8.3f} {self.m11:8.3f} {self.m12:8.3f} {self.m13:8.3f}]\n"
                 f"[{self.m20:8.3f} {self.m21:8.3f} {self.m22:8.3f} {self.m23:8.3f}]\n"
                 f"[{self.m30:8.3f} {self.m31:8.3f} {self.m32:8.3f} {self.m33:8.3f}]")

@@ -10,7 +10,7 @@ from RobotMessageManager import create_message_from_PC_to_controller, parse_mess
     MovementMode, JointAngles, InformationSource, DistanceAndAngleOffset, UNKNOWN_ANGLE
 from RunMode import RunMode
 from Configuration import RUN_MODE
-from InverseKinematicsHelper import calculate_inverse_kinematics, calculate_distance_and_angle_offset
+from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orientation_matrix, calculate_distance_and_angle_offset
 
 
 desired_angles = JointAngles(
@@ -30,14 +30,6 @@ last_known_angles = JointAngles(
     overarm = UNKNOWN_ANGLE,
     shoulder_forward = UNKNOWN_ANGLE,
     shoulder_out = UNKNOWN_ANGLE
-)
-desired_distance_and_angle_offset = DistanceAndAngleOffset(
-    x_distance = 0,
-    y_distance = 0,
-    z_distance = 0,
-    x_angle = 0,
-    y_angle = 0,
-    z_angle = 0
 )
 
 # define function pointers to send data to the Lego hubs (Bluetooth) and VR app (UDP).
@@ -73,11 +65,6 @@ async def control_robot_arm_vr_following_mode():
     print("Running in VR following mode.")
 
     while True:
-        # Calculate the desired angles based on the desired distance and angle offset of the robot arm.
-        with _state_lock:
-            new_desired_angles = await calculate_inverse_kinematics(last_known_angles, desired_distance_and_angle_offset)
-            if new_desired_angles:
-                desired_angles = new_desired_angles
 
         message_to_controller = create_message_from_PC_to_controller(
             movement_mode=MovementMode.MOVE_FAST,
@@ -269,11 +256,11 @@ def handle_message_from_controller_to_PC(data: bytes):
 def handle_message_from_VR_to_PC(data: bytes):
     """
     Handle incoming messages from VR app.
-    Updates the desired_distance_and_angle_offset based on the received data.
+    Updates the desired_angles based on the received data.
     
     :param data: Raw bytes received from VR app
     """
-    global desired_distance_and_angle_offset
+    global last_known_angles, desired_angles
 
     # Parse the message
     message = parse_message_from_VR_to_PC(data)
@@ -281,9 +268,14 @@ def handle_message_from_VR_to_PC(data: bytes):
         print("Failed to parse message from VR app")
         return
 
-    print(f"Received message from VR app with the following 4x4 matrix: \n{message.matrix_4x4}")
+    print(f"Received message from VR app.")
+    #print(f"Received message from VR app with the following 4x4 matrix: \n{message.matrix_4x4}")
 
-    # Update desired_distance_and_angle_offset
-    # TODO fix: with _state_lock:
-    #    desired_distance_and_angle_offset = message.desired_distance_and_angle_offset
-    #print(f"Received updated distance and angle offset from VR app: {desired_distance_and_angle_offset}")
+    # Try to calculate new desired angles every time a message is received from the VR app:
+    new_desired_angles = get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles, message.matrix_4x4)
+    if new_desired_angles is None:
+        print("Failed to calculate desired angles from VR position and orientation matrix")
+        return
+    with _state_lock:
+        desired_angles = new_desired_angles
+    print(f"Updated desired angles after message from VR app: {desired_angles}")
