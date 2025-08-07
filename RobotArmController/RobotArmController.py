@@ -116,11 +116,11 @@ async def control_robot_arm_demo_mode():
     Control the robot arm in demo mode.
     This function sends a series of joint angles to the robot arm to demonstrate its capabilities.
     """
-    underarm = 60
-    underarm_twist = 40
+    underarm = -60
+    underarm_twist = -40
     wrist = -60
     joint_angles_playlist = [ # Wave with underarm. First 6 values are joint angles, and the last value is the duration in milliseconds.
-        [  0,   0,   0,   0,                       0,        0, 2000],
+        [  0,   0,   0,   0,                       0,        0, 1000],
         [ 45,  15,   0,  13,                underarm,    wrist, 2000],
         [ 45,  15, -25,  13, underarm-underarm_twist,    wrist, 1000],
         [ 45,   0,  25,  13, underarm+underarm_twist,    wrist, 800],
@@ -128,12 +128,12 @@ async def control_robot_arm_demo_mode():
         [ 45,   0,  25,  13, underarm+underarm_twist,    wrist, 800],
         [ 45,  15, -25,  13, underarm-underarm_twist,    wrist, 800],
         [ 45,   0,  25,  13, underarm+underarm_twist,    wrist, 800],
-        [ 45,   0,   0,  13,                      90,    wrist, 800],
-        [ 45,   0,   0,  13,                      90, wrist-45, 500],
-        [ 45,   0,   0,  13,                      90, wrist+ 0, 500],
-        [ 45,   0,   0,  13,                      90, wrist-45, 500],
-        [ 45,   0,   0,  13,                      90, wrist+ 0, 500],
-        [  0,   0,   0,   0,                       0,        0, 1000],
+        [ 45,   0,   0,  13,                     -90,    wrist, 800],
+        [ 45,   0,   0,  13,                     -90, wrist-45, 500],
+        [ 45,   0,   0,  13,                     -90, wrist+ 0, 500],
+        [ 45,   0,   0,  13,                     -90, wrist-45, 500],
+        [ 45,   0,   0,  13,                     -90, wrist+ 0, 500],
+        [  0,   0,   0,   0,                       0,        0, 2000],
         ]
     
     

@@ -27,7 +27,7 @@ receive_buffer = bytearray(REC_MSG_LENGTH)
 
 # Motor definitions, including gearing ratios:
 wrist    = a = Motor(Port.A, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[12, 32]) # Wrist up/down
-underarm = b = Motor(Port.B, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[[12, 20],[8,28]]) # Underarm twist
+underarm = b = Motor(Port.B, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[12, 20],[8,28]]) # Underarm twist
 elbow    = c = Motor(Port.C, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[1, 24],[20,28]]) # Elbow
 overarm  = d = Motor(Port.D, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[8, 24],[12,60]]) # Overarm twist
 
