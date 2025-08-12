@@ -11,7 +11,7 @@ from RobotMessageManager import create_message_from_PC_to_controller, parse_mess
 from RunMode import RunMode
 from Configuration import RUN_MODE, robot_arm
 from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orientation_matrix, \
-    calculate_distance_and_angle_offset, get_plot
+    calculate_distance_and_angle_offset
 
 
 desired_angles = JointAngles(
