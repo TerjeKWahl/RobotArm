@@ -47,24 +47,6 @@ class JointAngles(ctypes.Structure):
                 f"Shoulder forward: {self.shoulder_forward}")
 
 
-
-# Define struct for distance and angle offsets (used in VR-PC communication):
-class DistanceAndAngleOffset(ctypes.Structure):
-    _fields_ = [
-        ("x_distance", ctypes.c_int16),  # X distance offset in mm
-        ("y_distance", ctypes.c_int16),  # Y distance offset in mm  
-        ("z_distance", ctypes.c_int16),  # Z distance offset in mm
-        ("x_angle", ctypes.c_int16),     # X angle offset in degrees
-        ("y_angle", ctypes.c_int16),     # Y angle offset in degrees
-        ("z_angle", ctypes.c_int16)      # Z angle offset in degrees
-    ]
-
-    # Define pretty printing for debugging:
-    def __repr__(self):
-        return (f"XYZ distance: {self.x_distance} {self.y_distance} {self.z_distance}. "
-                f"XYZ angles: {self.x_angle} {self.y_angle} {self.z_angle}.")
-
-
 # Define struct for 4x4 matrix (used in VR-PC communication):
 class Matrix4x4(ctypes.Structure):
     _fields_ = [
@@ -111,9 +93,10 @@ class MessageFromPcToVR(ctypes.Structure):
         ("prefix_w", ctypes.c_char),
         ("api_version", ctypes.c_int8),
         ("information_source", ctypes.c_int8),
-        ("connection_status", ctypes.c_int8),
-        ("last_known_distance_and_angle_offset", DistanceAndAngleOffset),
-        ("last_known_angles", JointAngles)
+        ("reserved_1", ctypes.c_int8),
+        ("reserved_2", ctypes.c_int8),
+        ("reserved_3", ctypes.c_int8),
+        ("matrix_4x4", Matrix4x4)
     ]
 
 
@@ -199,16 +182,13 @@ def parse_message_from_controller_to_PC(data: bytes) -> MessageFromControllerToP
     return message
 
 
-def create_message_from_PC_to_VR(is_connection_to_controllers_ok: bool,
-                                 last_known_distance_and_angle_offset: DistanceAndAngleOffset,
-                                 last_known_angles: JointAngles) -> bytes:
+def create_message_from_PC_to_VR(last_known_pose_matrix_4x4: Matrix4x4) -> bytes:
     """
     Creates a message to send from the PC to the VR app.
 
-    :param is_connection_to_controllers_ok: False = Not connected to controllers, True = Connected to controllers
-    :param last_known_distance_and_angle_offset: The last known distance and angle offsets
-    :param last_known_angles: The last known joint angles
-    :return: A byte array representing the message with proper big-endian encoding
+    :param last_known_pose_matrix_4x4: The last known pose matrix (4x4) of the physical robot 
+                                       arm's end-effector, in Unity/VR coordinate system
+    :return: A byte array representing the message
     """
     message = MessageFromPcToVR(
         prefix_t = b'T',
@@ -216,27 +196,14 @@ def create_message_from_PC_to_VR(is_connection_to_controllers_ok: bool,
         prefix_w = b'W',
         api_version = 1,
         information_source = InformationSource.PC_APP,
-        connection_status = 0 if not is_connection_to_controllers_ok else 1,
-        last_known_distance_and_angle_offset = last_known_distance_and_angle_offset,
-        last_known_angles = last_known_angles
+        reserved_1 = 0,  # Reserved for future use
+        reserved_2 = 0,  # Reserved for future use
+        reserved_3 = 0,  # Reserved for future use
+        matrix_4x4 = last_known_pose_matrix_4x4
     )
     
-    # Convert to bytes
     message_bytes = ctypes.string_at(ctypes.byref(message), ctypes.sizeof(message))
-    
-    # Convert 16-bit integers to big-endian format
-    result = bytearray(message_bytes)
-    
-    # Offsets for the 16-bit fields (after 5 single-byte fields: T, K, W, version, source, status)
-    offset_base = 6
-    
-    # Convert each 16-bit field to big-endian
-    for i in range(6):  # 6 int16 fields in DistanceAndAngleOffset
-        field_offset = offset_base + i * 2
-        value = int.from_bytes(bytes=result[field_offset:field_offset+2], byteorder='little', signed=True)
-        result[field_offset:field_offset+2] = value.to_bytes(length=2, byteorder='big', signed=True)
-
-    return bytes(result)
+    return message_bytes
 
 
 def parse_message_from_VR_to_PC(data: bytes) -> MessageFromVRToPC:

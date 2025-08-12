@@ -9,9 +9,9 @@ from RobotMessageManager import create_message_from_PC_to_controller, parse_mess
     create_message_from_PC_to_VR, parse_message_from_VR_to_PC, \
     MovementMode, JointAngles, InformationSource, Matrix4x4, UNKNOWN_ANGLE
 from RunMode import RunMode
-from Configuration import RUN_MODE, robot_arm
+from Configuration import RUN_MODE
 from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orientation_matrix, \
-    calculate_distance_and_angle_offset
+    get_VR_position_and_orientation_matrix_from_last_known_angles
 
 
 desired_angles = JointAngles(
@@ -32,7 +32,7 @@ last_known_angles = JointAngles(
     shoulder_forward = UNKNOWN_ANGLE,
     shoulder_out = UNKNOWN_ANGLE
 )
-last_known_vr_unity_matrix_4x4 = None  # Last known position and orientation of the robot arm in the VR app (Unity).
+last_known_vr_matrix_4x4_unity_coordinate_system = None  # Last known position and orientation of the robot arm in the VR app (Unity coordinate system).
 
 # define function pointers to send data to the Lego hubs (Bluetooth) and VR app (UDP).
 send_to_lego_hubs = None  # This will be set later when the Bluetooth connection is established.
@@ -63,15 +63,16 @@ async def control_robot_arm_vr_following_mode():
     This function will listen for messages from the VR system, calculate desired joint angles
     and send them to the robot arm.
     """
-    global desired_angles, last_known_angles
+    global desired_angles, last_known_angles, last_known_vr_matrix_4x4_unity_coordinate_system
+
     print("Running in VR following mode.")
 
     send_to_lego_hubs_task = None  # Task for sending messages to the Lego hubs
     send_to_VR_task = None         # Task for sending messages to the VR app
     while True:
-        if last_known_vr_unity_matrix_4x4 is not None:
+        if last_known_vr_matrix_4x4_unity_coordinate_system is not None:
             # Try to calculate new desired angles every time a message is received from the VR app:
-            new_desired_angles = get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles, last_known_vr_unity_matrix_4x4)
+            new_desired_angles = get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles, last_known_vr_matrix_4x4_unity_coordinate_system)
             if new_desired_angles is None:
                 #print("Failed to calculate desired angles from VR position and orientation matrix")
                 pass
@@ -92,13 +93,11 @@ async def control_robot_arm_vr_following_mode():
         send_to_lego_hubs_task = asyncio.create_task(send_to_lego_hubs(message_to_controller))
         #print("Message sent to the hub.")
 
-        # TODO: Send messages to VR not all the time, but on regular intervals.
-        last_known_distance_and_angle_offset = await calculate_distance_and_angle_offset(last_known_angles)
-        #print(f"Calculated last known distance and angle offset: {last_known_distance_and_angle_offset}")
+        # Send messages to VR every iteration of this eternal loop (same frequency as messages sent to Lego Technic hubs)
+        last_known_pose_matrix_4x4 = await get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_angles)
+        #print(f"Calculated last known pose: {last_known_pose_matrix_4x4}")
         message_to_VR = create_message_from_PC_to_VR(
-            is_connection_to_controllers_ok = True,
-            last_known_distance_and_angle_offset = last_known_distance_and_angle_offset,
-            last_known_angles = last_known_angles
+            last_known_pose_matrix_4x4 = last_known_pose_matrix_4x4
         )
 
         if send_to_VR_task is not None and not send_to_VR_task.done():
@@ -281,7 +280,7 @@ def handle_message_from_VR_to_PC(data: bytes):
     
     :param data: Raw bytes received from VR app
     """
-    global last_known_vr_unity_matrix_4x4
+    global last_known_vr_matrix_4x4_unity_coordinate_system
 
     # Parse the message
     message = parse_message_from_VR_to_PC(data)
@@ -293,4 +292,4 @@ def handle_message_from_VR_to_PC(data: bytes):
     #print(f"Received message from VR app with the following 4x4 matrix: \n{message.matrix_4x4}")
 
     with _state_lock:
-        last_known_vr_unity_matrix_4x4 = message.matrix_4x4
+        last_known_vr_matrix_4x4_unity_coordinate_system = message.matrix_4x4

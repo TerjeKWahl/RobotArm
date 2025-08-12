@@ -65,17 +65,14 @@ The numbering in the two lists below represent byte numbers.
 To make communication efficient on a LAN, we use UDP packets and make sure the payload is short enough 
 to fit within one WiFi/Ethernet UDP package (around 1400 bytes).
 
-When talking about position offsets:
-- X is forward
-- Y is to the left
-- Z is up
+When talking about position and rotation in messages to and from the VR app, we use the VR/Unity coordinate
+system (x-right, y-up, z-forward), and not the robot arm's coordinate system (x-forward, y-left, z-up).
 
-VR app should send a UDP package to the PC every second frame (around 30 times per second).
+VR app should send a UDP package to the PC every second frame (around 30-36 times per second).
 
-The PC should send a UDP package to the VR app 30 times per second.
+The PC should send a UDP package to the VR app around 30-50 times per second.
 
 16 bit numbers are sent big-endian (MSB first, LSB last). Distances are in mm. Angles are in degrees. 
-Offsets mean in relation to the initial starting position of the robot arm.
 
 
 ### Message from VR to PC:
@@ -103,25 +100,10 @@ Offsets mean in relation to the initial starting position of the robot arm.
 4.  API version, 1
 5.  int8, information source:  
     - 21 = PC app
-6.  int8, PC connection status:
-    - 0 = Not connected to controllers (Lego and Arduino)
-    - 1 = Connected to controllers (Lego and Arduino)
-7.  int16 MSB, X last known distance offset
-8.  int16 LSB, X last known distance offset
-9.  int16 MSB, Y last known distance offset
-10. int16 LSB, Y last known distance offset
-11. int16 MSB, Z last known distance offset
-12. int16 LSB, Z last known distance offset
-13. int16 MSB, X last known angle offset
-14. int16 LSB, X last known angle offset
-15. int16 MSB, Y last known angle offset
-16. int16 LSB, Y last known angle offset
-17. int16 MSB, Z last known angle offset
-18. int16 LSB, Z last known angle offset
-19. int8, last known angle for gripper
-20. int8, last known angle for wrist  
-21. int8, last known angle for underarm 
-22. int8, last known angle for elbow   
-23. int8, last known angle for overarm  
-24. int8, last known angle for shoulder_out  
-25. int8, last known angle for shoulder_forward 
+6.  (Reserved for future use, extra byte to avoid bugs due to struct packing.)
+7.  (Reserved for future use, extra byte to avoid bugs due to struct packing.)
+8.  (Reserved for future use, extra byte to avoid bugs due to struct packing.)
+9.  Bytes number 9 to 136: 16 double floating point numbers, representing the 4 x 4 matrix 
+    describing the last known position and rotation of the physical robot arm's gripper.
+    16 doubles * 8 bytes/double = 128 bytes.
+    The numbers are row first, so the first 4 numbers represent the first row, etc.

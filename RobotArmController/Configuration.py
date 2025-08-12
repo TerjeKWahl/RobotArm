@@ -52,7 +52,11 @@ E15 = rtb.ET.tx(7*studs)                              # 7 studs out to gripper (
 
 robot_arm = E1 * E2 * E3 * E4 * E5 * E6 * E7 * E8 * E9 * E10 * E11 * E12 * E13 * E14 * E15
 
-# Robot initial position and orientation
+# Robot initial position and orientation (neutral pose with bent elbow and thumb pointing up)
 neutral_pose_with_bent_elbow_q = np.array([0, 0, 0, 0, 0, 0, 0])
 NEUTRAL_POSE_SE3 = robot_arm.fkine(neutral_pose_with_bent_elbow_q)  # Calculate the forward kinematics of the neutral pose with a bent elbow
 
+unity_position_offset = np.array([0.25, -0.40, 0.30])    # The end effector (gripper) offset in meters (in Unity starts 25cm right, 
+                                                         # 40cm down from eye level and 30cm forward)
+robot_position_offset = np.array([0.352, -0.076, 0.113]) # The end effector (gripper) offset in meters (physical robot arm starts 
+                                                         # 35.2cm forward, 7.6cm right and 11.3cm up from table level)

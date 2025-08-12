@@ -7,8 +7,8 @@ import numpy as np
 import roboticstoolbox as rtb
 from typing import List
 from spatialmath import SE3
-from RobotMessageManager import JointAngles, DistanceAndAngleOffset, Matrix4x4, UNKNOWN_ANGLE
-from Configuration import robot_arm, joint_limits_deg, NEUTRAL_POSE_SE3
+from RobotMessageManager import JointAngles, Matrix4x4, UNKNOWN_ANGLE
+from Configuration import robot_arm, joint_limits_deg, unity_position_offset, robot_position_offset, NEUTRAL_POSE_SE3
 
 
 is_first_call = True  # Flag to print robot arm structure only once
@@ -23,13 +23,9 @@ unity_to_robot_rotation = np.array([
     [0,  0, 0, 1]     
 ]).astype(np.float64)  # Use float64 for higher precision
 unity_to_robot_rotation_inv = np.linalg.inv(unity_to_robot_rotation)
-# TODO: Move these to Configuration.py 
-unity_postion_offset = np.array([0.25, -0.40, 0.30])    # Offset in meters (in Unity starts 25cm right, 
-                                                        # 40cm down from eye level and 30cm forward)
-robot_postion_offset = np.array([0.352, -0.076, 0.113]) # Offset in meters (physical robot arm starts 35.2cm forward, 
-                                                        # 7,6cm right and 11.3cm up from table level)
 
 last_desired_7th_joint_angle_deg = 0 # TODO: Temporary variable until implementing the 7th joint (2nd wrist joint) in the robot
+
 
 
 def __get_current_pose_deg(last_known_angles: JointAngles) -> List[int]:
@@ -71,109 +67,13 @@ def __get_current_pose_deg(last_known_angles: JointAngles) -> List[int]:
 
 
 
-async def calculate_distance_and_angle_offset(joint_angles : JointAngles) -> DistanceAndAngleOffset:
+def __get_pos_in_robot_coordinate_system_se3(vr_unity_matrix_4x4: Matrix4x4) -> SE3:
     """
-    Calculate the distance and angle offset for the robot arm based on the last known angles.
+    Convert a 4x4 matrix from Unity's coordinate system to the robot arm's coordinate system.
+    If an error occurs during the conversion, it returns a representation of the robot's neutral pose.
     """
-    """ Test code for later:
-    q = np.deg2rad(np.array([0,0,0,0,0,0]))  # Initialize with zeros
-    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
-    xyz_angles = position_and_angle_se3.eul(unit='deg') # Get rotation around the Z, Y and Z axes for the solution. TODO: Fix/test correctness of ordering of rotations (print out many alternatives to find the right one)
-    dist_and_angles = DistanceAndAngleOffset(
-        x_distance = int(position_and_angle_se3.t[0]),
-        y_distance = int(position_and_angle_se3.t[1]),
-        z_distance = int(position_and_angle_se3.t[2]),
-        x_angle = int(xyz_angles[0]),
-        y_angle = int(xyz_angles[1]),
-        z_angle = int(xyz_angles[2])
-    )
-    print(f"Calculated last known distance and angle offset zeroes: {dist_and_angles}")
-
-    q = np.deg2rad(np.array([0,0,0,0,90,0]))  # Initialize with zeros
-    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
-    xyz_angles = position_and_angle_se3.eul(unit='deg') # Get rotation around the Z, Y and Z axes for the solution. TODO: Fix/test correctness of ordering of rotations (print out many alternatives to find the right one)
-    dist_and_angles = DistanceAndAngleOffset(
-        x_distance = int(position_and_angle_se3.t[0]),
-        y_distance = int(position_and_angle_se3.t[1]),
-        z_distance = int(position_and_angle_se3.t[2]),
-        x_angle = int(xyz_angles[0]),
-        y_angle = int(xyz_angles[1]),
-        z_angle = int(xyz_angles[2])
-    )
-    print(f"Calculated last known distance and angle offset underarm 90: {dist_and_angles}")
-
-    q = np.deg2rad(np.array([0,0,0,0,0,90]))  # Initialize with zeros
-    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
-    xyz_angles = position_and_angle_se3.eul(unit='deg') # Get rotation around the Z, Y and Z axes for the solution. TODO: Fix/test correctness of ordering of rotations (print out many alternatives to find the right one)
-    dist_and_angles = DistanceAndAngleOffset(
-        x_distance = int(position_and_angle_se3.t[0]),
-        y_distance = int(position_and_angle_se3.t[1]),
-        z_distance = int(position_and_angle_se3.t[2]),
-        x_angle = int(xyz_angles[0]),
-        y_angle = int(xyz_angles[1]),
-        z_angle = int(xyz_angles[2])
-    )
-    print(f"Calculated last known distance and angle offset wrist 90: {dist_and_angles}")
-
-    q = np.deg2rad(np.array([0,0,0,90,0,0]))  # Initialize with zeros
-    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
-    xyz_angles = position_and_angle_se3.eul(unit='deg') # Get rotation around the Z, Y and Z axes for the solution. TODO: Fix/test correctness of ordering of rotations (print out many alternatives to find the right one)
-    dist_and_angles = DistanceAndAngleOffset(
-        x_distance = int(position_and_angle_se3.t[0]),
-        y_distance = int(position_and_angle_se3.t[1]),
-        z_distance = int(position_and_angle_se3.t[2]),
-        x_angle = int(xyz_angles[0]),
-        y_angle = int(xyz_angles[1]),
-        z_angle = int(xyz_angles[2])
-    )
-    print(f"Calculated last known distance and angle offset elbow 90: {dist_and_angles}")
-    """
-
-
-    q = np.deg2rad(np.array([
-        joint_angles.shoulder_forward,
-        joint_angles.shoulder_out,
-        joint_angles.overarm,
-        joint_angles.elbow,
-        joint_angles.underarm,
-        joint_angles.wrist
-    ]))
-    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
-    xyz_angles = position_and_angle_se3.eul(unit='deg') # Get rotation around the Z, Y and Z axes for the solution. TODO: Fix/test correctness of ordering of rotations (print out many alternatives to find the right one)
-    return DistanceAndAngleOffset(
-        x_distance = int(position_and_angle_se3.t[0]),
-        y_distance = int(position_and_angle_se3.t[1]),
-        z_distance = int(position_and_angle_se3.t[2]),
-        x_angle = int(xyz_angles[0]),
-        y_angle = int(xyz_angles[1]),
-        z_angle = int(xyz_angles[2])
-    )
-
-
-
-def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles: JointAngles, 
-                                                               vr_unity_matrix_4x4: Matrix4x4) -> JointAngles: 
-    """
-    Calculate the inverse kinematics for the robot arm.
-    Returns the desired angles for each joint based on the desired position and orientation.
-
-    :param last_known_angles: The last known angles of the robot arm joints
-    :param vr_unity_matrix_4x4: The 4x4 matrix representing the desired position and orientation in Unity world coordinates
-    :return: JointAngles object with the desired angles for each joint, in degrees. If the calculation fails,
-             it returns None and prints an error message.
-    """
-    global is_first_call, last_desired_7th_joint_angle_deg
-
-    # Print general information about the robot arm structure only if this is the first time this function is called:
-    if is_first_call:
-        is_first_call = False
-        print("The robot arm structure is:")
-        print(robot_arm) # View the ETS (Elementary Transformation Sequence, where ET is a translation or rotation).
-        print(f"The robot has {robot_arm.n} joints")
-        print(f"The robot has {robot_arm.m} Elementary Transformations (ETs)")
-
-    # Calculate the desired angles based on the desired distance and orientation offset of the robot arm.
-
+    global unity_to_robot_rotation, unity_to_robot_rotation_inv, unity_position_offset, robot_position_offset
+    
     #print(f"unity_to_robot_rotation: \n{unity_to_robot_rotation}")
     #print(f"unity_to_robot_rotation_inv: \n{unity_to_robot_rotation_inv}")
     #print(f"unity_to_robot_rotation_inv has type: {unity_to_robot_rotation_inv.dtype}")
@@ -184,7 +84,7 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
                                     [m.m30, m.m31, m.m32, m.m33]]).astype(np.float64)  # Use float64 for higher precision
     #print(f"unity_pos_array_4x4: \n{unity_pos_array_4x4}")
     translated_unity_pos = unity_pos_array_4x4
-    translated_unity_pos[:3, 3] -= unity_postion_offset  # Subtract the Unity offset to the position
+    translated_unity_pos[:3, 3] -= unity_position_offset  # Subtract the Unity offset to the position
     #print(f"translated_unity_pos: \n{translated_unity_pos}")
     pos_in_robot_coordinate_system = np.dot( np.dot(unity_to_robot_rotation, unity_pos_array_4x4), unity_to_robot_rotation_inv)
     #print(f"pos_in_robot_coordinate_system (before rotational component fix): \n{pos_in_robot_coordinate_system}")
@@ -209,10 +109,11 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
     #print(f"pos_in_robot_coordinate_system_fixed: \n{pos_in_robot_coordinate_system_fixed}")
     pos_in_robot_coordinate_system = pos_in_robot_coordinate_system_fixed
 
+    pos_in_robot_coordinate_system_se3 = SE3(NEUTRAL_POSE_SE3)
     try:
         pos_in_robot_coordinate_system_se3 = SE3(pos_in_robot_coordinate_system)
         #print(f"pos_in_robot_coordinate_system_se3 (before applying offset): \n{pos_in_robot_coordinate_system_se3}")
-        pos_in_robot_coordinate_system[:3, 3] += robot_postion_offset  # Add the robot coordinate system offset to the position
+        pos_in_robot_coordinate_system[:3, 3] += robot_position_offset  # Add the robot coordinate system offset to the position
         pos_in_robot_coordinate_system_se3 = SE3(pos_in_robot_coordinate_system)
         #print(f"pos_in_robot_coordinate_system_se3 (after applying offset): \n{pos_in_robot_coordinate_system_se3}")
     except Exception as e:
@@ -221,15 +122,80 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
         print(f"pos_in_robot_coordinate_system dtype: {pos_in_robot_coordinate_system.dtype}")
         rotation_part = pos_in_robot_coordinate_system[:3, :3]
         print(f"Determinant: {np.linalg.det(rotation_part)}")
-        pos_in_robot_coordinate_system_se3 = SE3(NEUTRAL_POSE_SE3)
 
-    desired_pose_se3 = pos_in_robot_coordinate_system_se3
+    return pos_in_robot_coordinate_system_se3
+
+    
+
+def get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_angles: JointAngles) -> Matrix4x4: 
+    """
+    Get the last known position and orientation matrix for the physical robot arm (in Unity/VR coordinate system) 
+    from the last known angles.
+    Uses forward kinematics to compute the end-effector pose. Used to send to VR app, so it can display 
+    a "ghost" of the real robot arm.
+    """
+    global last_desired_7th_joint_angle_deg
+
+    q = np.deg2rad(np.array([
+        last_known_angles.shoulder_forward,
+        last_known_angles.shoulder_out,
+        last_known_angles.overarm,
+        last_known_angles.elbow,
+        last_known_angles.underarm,
+        last_known_angles.wrist,
+        last_desired_7th_joint_angle_deg
+    ]))
+    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
+
+    # TODO Implement
+
+    matrix_4x4 = Matrix4x4()
+    matrix_4x4.m00 = position_and_angle_se3[0, 0]
+    matrix_4x4.m01 = position_and_angle_se3[0, 1]
+    matrix_4x4.m02 = position_and_angle_se3[0, 2]
+    matrix_4x4.m03 = position_and_angle_se3[0, 3]
+    matrix_4x4.m10 = position_and_angle_se3[1, 0]
+    matrix_4x4.m11 = position_and_angle_se3[1, 1]
+    matrix_4x4.m12 = position_and_angle_se3[1, 2]
+    matrix_4x4.m13 = position_and_angle_se3[1, 3]
+    matrix_4x4.m20 = position_and_angle_se3[2, 0]
+    matrix_4x4.m21 = position_and_angle_se3[2, 1]
+    matrix_4x4.m22 = position_and_angle_se3[2, 2]
+    matrix_4x4.m23 = position_and_angle_se3[2, 3]
+    matrix_4x4.m30 = 0
+    matrix_4x4.m31 = 0
+    matrix_4x4.m32 = 0
+    matrix_4x4.m33 = 1
+    return matrix_4x4
+
+
+
+def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles: JointAngles, 
+                                                               vr_unity_matrix_4x4: Matrix4x4) -> JointAngles: 
+    """
+    Calculate the inverse kinematics for the robot arm.
+    Returns the desired angles for each joint based on the desired position and orientation.
+
+    :param last_known_angles: The last known angles of the robot arm joints. Used to get IK solutions close to the last known angles.
+    :param vr_unity_matrix_4x4: The 4x4 matrix representing the desired position and orientation in Unity world coordinates
+    :return: JointAngles object with the desired angles for each joint, in degrees. If the calculation fails,
+             it returns None and prints an error message.
+    """
+    global is_first_call, last_desired_7th_joint_angle_deg
+
+    # Print general information about the robot arm structure only if this is the first time this function is called:
+    if is_first_call:
+        is_first_call = False
+        print("The robot arm structure is:")
+        print(robot_arm) # View the ETS (Elementary Transformation Sequence, where ET is a translation or rotation).
+        print(f"The robot has {robot_arm.n} joints")
+        print(f"The robot has {robot_arm.m} Elementary Transformations (ETs)")
+
+
+    desired_pose_se3 = __get_pos_in_robot_coordinate_system_se3(vr_unity_matrix_4x4)
     #print(f"desired_pose_se3: \n{desired_pose_se3}")
     current_pose_q = np.deg2rad(__get_current_pose_deg(last_known_angles))
     desired_angles = None
-
-    #print("Skipping inverse kinematics for now, please ignore the following error message:")
-    #return desired_angles
 
     mask_priority_1 = np.array([4, 4, 4, 2, 1, 3])  # We want to prioritize the position over the orientation in the IK solution, 
                                                     # and for orientation we don't prioritize rotation around the X axis (should be along the gripper "fingers" so not too important).
@@ -260,24 +226,6 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
             break  # If the solution was successful, no need to try other methods
         else:
             print(f"***** Inverse kinematics failed for mask {mask_priority}. *****")
-
-        """
-        joint_angles_solution = robot_arm.ik_NR(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100, pinv=True)
-        solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
-        print(f"NR Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
-        if was_successful:
-            joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
-            print(f"Joint angles suggested (degrees): {joint_angles_deg}")
-            break  # If the solution was successful, no need to try other methods
-
-        joint_angles_solution = robot_arm.ik_GN(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100, pinv=True)
-        solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
-        print(f"GN Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}")
-        if was_successful:
-            joint_angles_deg = np.round(np.rad2deg(solution_q)).astype(int)
-            print(f"Joint angles suggested (degrees): {joint_angles_deg}")
-            break  # If the solution was successful, no need to try other methods
-        """
 
     if not was_successful:
         print("!!!!! WARNING !!!!!! Failed to find inverse kinematics solution - use previous angles")
