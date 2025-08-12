@@ -24,10 +24,10 @@ VR_UDP_PORT = 7506             # Port for UDP communication with the VR device (
 studs = 0.008  # 8 mm between Lego studs
 # Define joint limits in degrees
 joint_limits_deg = [ # TODO: Adjust these
-    [-10, 45],    # Joint 1 (shoulder forward): +45 to -10 degrees
-    [0, 35],      # Joint 2 (shoulder out/up):  +35 to 0 degrees
-    [-120, 35],   # Joint 3 (overarm):          +35 to -120 degrees
-    [-20, 13],    # Joint 4 (elbow):            +13 to -20 degrees
+    [-60, 60],    # Joint 1 (shoulder forward): +45 to -10 degrees
+    [-20, 60],      # Joint 2 (shoulder out/up):  +35 to 0 degrees
+    [-120, 60],   # Joint 3 (overarm):          +35 to -120 degrees
+    [-90, 45],    # Joint 4 (elbow):            +13 to -20 degrees
     [-120, 120],  # Joint 5 (underarm):         +120 to -120 degrees
     [-110, 110],  # Joint 6 (wrist):            +110 to -110 degrees - Wrist left/right (as seen when right thumb is up)
     [-70, 70]     # Joint 7 (wrist other way):   +70 to -70 degrees  - This joint is not physically on the robot (yet), but greatly improves IK solutions and control stability as a "virtual" joint (for now)

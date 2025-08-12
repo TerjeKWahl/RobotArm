@@ -151,6 +151,16 @@ def create_message_from_PC_to_controller(movement_mode: MovementMode,
     desired_angles.shoulder_out = max(-128, min(127, desired_angles.shoulder_out))
     desired_angles.shoulder_forward = max(-128, min(127, desired_angles.shoulder_forward))
 
+    # TODO: Remove when no longer necessary for testing:
+    # Clip desired angles to valid range based on limits:
+    desired_angles.gripper = max(-128, min(127, desired_angles.gripper))
+    desired_angles.wrist = max(-110, min(110, desired_angles.wrist))
+    desired_angles.underarm = max(-120, min(120, desired_angles.underarm))
+    desired_angles.elbow = max(-20, min(13, desired_angles.elbow))
+    desired_angles.overarm = max(-120, min(35, desired_angles.overarm))
+    desired_angles.shoulder_out = max(0, min(35, desired_angles.shoulder_out))
+    desired_angles.shoulder_forward = max(-10, min(45, desired_angles.shoulder_forward))
+
     message = MessageFromPcToController(
         prefix_t = b'T',
         prefix_w = b'W',
