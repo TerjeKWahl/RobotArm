@@ -4,7 +4,7 @@ end-effector poses (translation and orientation).
 """
 
 import numpy as np
-import threading
+import roboticstoolbox as rtb
 from typing import List
 from spatialmath import SE3
 from RobotMessageManager import JointAngles, DistanceAndAngleOffset, Matrix4x4, UNKNOWN_ANGLE
@@ -26,16 +26,19 @@ unity_to_robot_rotation_inv = np.linalg.inv(unity_to_robot_rotation)
 # TODO: Move these to Configuration.py 
 unity_postion_offset = np.array([0.25, -0.40, 0.30])    # Offset in meters (in Unity starts 25cm right, 
                                                         # 40cm down from eye level and 30cm forward)
-robot_postion_offset = np.array([0.328, -0.076, 0.113]) # Offset in meters (physical robot arm starts 32.8cm forward, 
+robot_postion_offset = np.array([0.352, -0.076, 0.113]) # Offset in meters (physical robot arm starts 35.2cm forward, 
                                                         # 7,6cm right and 11.3cm up from table level)
 
+last_desired_7th_joint_angle_deg = 0 # TODO: Temporary variable until implementing the 7th joint (2nd wrist joint) in the robot
 
-def __get_current_pose(last_known_angles: JointAngles) -> List[int]:
+
+def __get_current_pose_deg(last_known_angles: JointAngles) -> List[int]:
     """
     Get the current pose of the robot arm based on the last known angles.
     This function returns the angles in degrees for each joint, ensuring that
     unknown angles are set to 0.
     """
+    global last_desired_7th_joint_angle_deg
     # Create a copy of the last known angles to avoid modifying the original
     last_known_angles_copy = JointAngles(
         gripper=last_known_angles.gripper,
@@ -61,7 +64,10 @@ def __get_current_pose(last_known_angles: JointAngles) -> List[int]:
         last_known_angles_copy.shoulder_forward = 0
     if last_known_angles_copy.shoulder_out == UNKNOWN_ANGLE:
         last_known_angles_copy.shoulder_out = 0
-    return [last_known_angles_copy.shoulder_forward, last_known_angles_copy.shoulder_out, last_known_angles_copy.overarm, last_known_angles_copy.elbow, last_known_angles_copy.underarm, last_known_angles_copy.wrist]
+    
+    return [last_known_angles_copy.shoulder_forward, last_known_angles_copy.shoulder_out, last_known_angles_copy.overarm, 
+            last_known_angles_copy.elbow, last_known_angles_copy.underarm, last_known_angles_copy.wrist,
+            last_desired_7th_joint_angle_deg]
 
 
 
@@ -156,8 +162,9 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
     :return: JointAngles object with the desired angles for each joint, in degrees. If the calculation fails,
              it returns None and prints an error message.
     """
+    global is_first_call, last_desired_7th_joint_angle_deg
+
     # Print general information about the robot arm structure only if this is the first time this function is called:
-    global is_first_call
     if is_first_call:
         is_first_call = False
         print("The robot arm structure is:")
@@ -218,18 +225,18 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
 
     desired_pose_se3 = pos_in_robot_coordinate_system_se3
     #print(f"desired_pose_se3: \n{desired_pose_se3}")
-    current_pose_q = __get_current_pose(last_known_angles)
+    current_pose_q = np.deg2rad(__get_current_pose_deg(last_known_angles))
     desired_angles = None
 
     #print("Skipping inverse kinematics for now, please ignore the following error message:")
     #return desired_angles
 
-    mask_priority_1 = np.array([4, 4, 4, 1, 2, 3])  # We want to prioritize the position over the orientation in the IK solution, 
+    mask_priority_1 = np.array([4, 4, 4, 2, 1, 3])  # We want to prioritize the position over the orientation in the IK solution, 
                                                     # and for orientation we don't prioritize rotation around the X axis (should be along the gripper "fingers" so not too important).
-                                                    # The Y and Z axes are more important for orientation, and we want to prioritize the Z axis (controlled by wrist) over 
-                                                    # the Y axis (controlled by elbow and shoulder forward).
-    mask_priority_2 = np.array([2, 2, 2, 0, 1, 1])  # We want to prioritize the position over the orientation in the IK solution, 
-                                                    # and for orientation we don't prioritize rotation around the X axis (should be along the gripper "fingers" so not too important).
+                                                    # The X and Z axes are more important for orientation, and we want to prioritize the Z axis (controlled by wrist) over 
+                                                    # the X axis (controlled by underarm rotation).
+    mask_priority_2 = np.array([2, 2, 2, 1, 0, 1])  # We want to prioritize the position over the orientation in the IK solution, 
+                                                    # and for orientation we don't prioritize rotation around the Y axis (missing wrist joint around 2nd axis).
     mask_list = [mask_priority_1, mask_priority_2]  # List of masks to try
 
     joint_angles_deg = 0
@@ -251,6 +258,8 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
             #solution_se3 = robot_arm.fkine(solution_q)
             #print(f"Rotation around the Z, Y and Z axes for the solution:    {solution_se3.eul(unit='deg')}")
             break  # If the solution was successful, no need to try other methods
+        else:
+            print(f"***** Inverse kinematics failed for mask {mask_priority}. *****")
 
         """
         joint_angles_solution = robot_arm.ik_NR(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100, pinv=True)
@@ -294,7 +303,7 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
             desired_angles.elbow = joint_angles_deg[3]
             desired_angles.underarm = joint_angles_deg[4]
             desired_angles.wrist = joint_angles_deg[5]
-            
+            last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: This is temporary, but should improve stability
 
     # Return the desired angles
     return desired_angles

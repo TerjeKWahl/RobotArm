@@ -5,12 +5,14 @@ It can run in different modes depending on a constant: Demo mode or VR following
 
 import asyncio
 import threading
+import matplotlib.pyplot as plt
 from RobotMessageManager import create_message_from_PC_to_controller, parse_message_from_controller_to_PC, \
     create_message_from_PC_to_VR, parse_message_from_VR_to_PC, \
     MovementMode, JointAngles, InformationSource, Matrix4x4, UNKNOWN_ANGLE
 from RunMode import RunMode
-from Configuration import RUN_MODE
-from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orientation_matrix, calculate_distance_and_angle_offset
+from Configuration import RUN_MODE, robot_arm
+from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orientation_matrix, \
+    calculate_distance_and_angle_offset, get_plot
 
 
 desired_angles = JointAngles(
@@ -40,6 +42,11 @@ send_to_VR = None         # This will be set later from the caller of control_ro
 # Thread lock for protecting shared state
 _state_lock = threading.Lock()
 
+# Global variables for plot management
+#_plot_fig = None
+#_plot_ax = None
+#_plot_initialized = False
+
 
 
 async def control_robot_arm(send_to_lego_hubs_function, send_to_VR_function):
@@ -62,8 +69,23 @@ async def control_robot_arm_vr_following_mode():
     This function will listen for messages from the VR system, calculate desired joint angles
     and send them to the robot arm.
     """
-    global desired_angles, last_known_angles
+    global desired_angles, last_known_angles, _plot_fig, _plot_ax, _plot_initialized
     print("Running in VR following mode.")
+
+    """
+    # Initialize the plot window once
+    if not _plot_initialized:
+        plt.ion()  # Turn on interactive mode
+        _plot_fig = plt.figure(figsize=(10, 8))
+        _plot_ax = _plot_fig.add_subplot(111, projection='3d')
+        _plot_ax.set_xlabel('X (m)')
+        _plot_ax.set_ylabel('Y (m)')
+        _plot_ax.set_zlabel('Z (m)')
+        _plot_ax.set_title('Robot Arm Configuration')
+        _plot_ax.grid(True)
+        plt.show(block=False)
+        _plot_initialized = True
+    """
 
     send_to_lego_hubs_task = None  # Task for sending messages to the Lego hubs
     send_to_VR_task = None         # Task for sending messages to the VR app
@@ -77,7 +99,7 @@ async def control_robot_arm_vr_following_mode():
             else:
                 with _state_lock:
                     desired_angles = new_desired_angles
-                print(f"Updated desired angles from VR gripper position: {desired_angles}")
+                #print(f"Updated desired angles from VR gripper position: {desired_angles}")
 
         message_to_controller = create_message_from_PC_to_controller(
             movement_mode=MovementMode.MOVE_FAST,
@@ -93,7 +115,7 @@ async def control_robot_arm_vr_following_mode():
 
         # TODO: Send messages to VR not all the time, but on regular intervals.
         last_known_distance_and_angle_offset = await calculate_distance_and_angle_offset(last_known_angles)
-        print(f"Calculated last known distance and angle offset: {last_known_distance_and_angle_offset}")
+        #print(f"Calculated last known distance and angle offset: {last_known_distance_and_angle_offset}")
         message_to_VR = create_message_from_PC_to_VR(
             is_connection_to_controllers_ok = True,
             last_known_distance_and_angle_offset = last_known_distance_and_angle_offset,
@@ -104,6 +126,38 @@ async def control_robot_arm_vr_following_mode():
             print("Waiting for previous send_to_VR_task to finish...")
             await send_to_VR_task
         send_to_VR_task = asyncio.create_task(send_to_VR(message_to_VR))
+
+        """
+        # Update the existing plot window
+        try:
+            # Convert desired_angles to radians for plotting
+            import numpy as np
+            joint_angles_q = np.deg2rad([
+                desired_angles.shoulder_forward,
+                desired_angles.shoulder_out,
+                desired_angles.overarm,
+                desired_angles.elbow,
+                desired_angles.underarm,
+                desired_angles.wrist
+            ])
+            
+            # Clear the previous plot and redraw
+            _plot_ax.clear()
+            _plot_ax.set_xlabel('X (m)')
+            _plot_ax.set_ylabel('Y (m)')
+            _plot_ax.set_zlabel('Z (m)')
+            _plot_ax.set_title('Robot Arm Configuration')
+            _plot_ax.grid(True)
+            
+            # Plot the robot arm in the existing axes
+            #robot_arm.plot(joint_angles_q, ax=_plot_ax, block=False)
+            robot_arm.plot(joint_angles_q, block=False)
+            _plot_fig.canvas.draw()
+            _plot_fig.canvas.flush_events()
+            
+        except Exception as e:
+            print(f"Error updating robot arm plot: {e}")
+        """
 
         wait_time_ms = 20 # TODO: Make faster and move this to a configuration constant.
         await asyncio.sleep(wait_time_ms / 1000)
