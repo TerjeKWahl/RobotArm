@@ -163,15 +163,7 @@ def get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_ang
     """
     global last_desired_7th_joint_angle_deg
 
-    q = np.deg2rad(np.array([
-        last_known_angles.shoulder_forward,
-        last_known_angles.shoulder_out,
-        last_known_angles.overarm,
-        last_known_angles.elbow,
-        last_known_angles.underarm,
-        last_known_angles.wrist,
-        last_desired_7th_joint_angle_deg
-    ]))
+    q = last_known_angles.as_np_array_rad(last_desired_7th_joint_angle_deg)
     pose_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
 
     # Transform the position and orientation into the VR/Unity coordinate system
@@ -196,6 +188,49 @@ def get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_ang
     matrix_4x4.m33 = 1
     return matrix_4x4
 
+
+
+def __adjust_angles_to_not_crash_into_anything(desired_angles : JointAngles):
+    """ Adjust angles to not crash into the table/desk or the robot torso. """
+    global joint_limits_deg, last_desired_7th_joint_angle_deg
+
+    MIN_HEIGHT_OVER_TABLE_M = 0.00
+    MIN_Y_POSITION_WRT_TORSO_M = -0.025
+    ANGLE_ADJUSTMENT_STEP_DEG = 2
+
+    # First clip desired angles to valid range based on simple limits, in case it is not already done:
+    desired_angles.gripper = max(-128, min(127, desired_angles.gripper))
+    desired_angles.wrist = max(joint_limits_deg[5][0], min(joint_limits_deg[5][1], desired_angles.wrist))
+    desired_angles.underarm = max(joint_limits_deg[4][0], min(joint_limits_deg[4][1], desired_angles.underarm))
+    desired_angles.elbow = max(joint_limits_deg[3][0], min(joint_limits_deg[3][1], desired_angles.elbow))
+    desired_angles.overarm = max(joint_limits_deg[2][0], min(joint_limits_deg[2][1], desired_angles.overarm))
+    desired_angles.shoulder_out = max(joint_limits_deg[1][0], min(joint_limits_deg[1][1], desired_angles.shoulder_out))
+    desired_angles.shoulder_forward = max(joint_limits_deg[0][0], min(joint_limits_deg[0][1], desired_angles.shoulder_forward))
+
+    # Get SE3 pose from the desired angles
+    desired_pose_matrix = robot_arm.fkine(desired_angles.as_np_array_rad(last_desired_7th_joint_angle_deg)).A
+
+    # First make sure we don't crash into the table/desk:
+    while desired_pose_matrix[2, 3] < MIN_HEIGHT_OVER_TABLE_M:
+        # If the end-effector is too low, raise it by adjusting the elbow joint (if not already too high), alternatively the shoulder joint
+        if desired_angles.elbow <= joint_limits_deg[3][1] + ANGLE_ADJUSTMENT_STEP_DEG:
+            desired_angles.elbow += ANGLE_ADJUSTMENT_STEP_DEG
+        elif desired_angles.shoulder_forward <= joint_limits_deg[0][1] + ANGLE_ADJUSTMENT_STEP_DEG:
+            desired_angles.shoulder_forward += ANGLE_ADJUSTMENT_STEP_DEG
+        else:
+            print("ERROR: Cannot raise the end-effector to get above the table. This should not be possible.")
+        desired_pose_matrix = robot_arm.fkine(desired_angles.as_np_array_rad(last_desired_7th_joint_angle_deg)).A
+
+    # Now make sure we don't crash into the robot's torso:
+    # TODO Make this more fancy
+    while desired_pose_matrix[1, 3] > MIN_Y_POSITION_WRT_TORSO_M:  # If the end-effector is too close to the torso
+        if desired_angles.overarm >= joint_limits_deg[2][0] - ANGLE_ADJUSTMENT_STEP_DEG:
+            desired_angles.overarm -= ANGLE_ADJUSTMENT_STEP_DEG
+        else:
+            print("ERROR: Cannot move the end-effector away from the torso. This should not be possible.")
+        desired_pose_matrix = robot_arm.fkine(desired_angles.as_np_array_rad(last_desired_7th_joint_angle_deg)).A
+
+    return desired_angles
 
 
 def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles: JointAngles, 
@@ -280,6 +315,8 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
             desired_angles.underarm = joint_angles_deg[4]
             desired_angles.wrist = joint_angles_deg[5]
             last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: This is temporary, but should improve stability
+
+            __adjust_angles_to_not_crash_into_anything(desired_angles) # Adjust angles to not crash into the table/desk or the robot torso
 
     # Return the desired angles
     return desired_angles

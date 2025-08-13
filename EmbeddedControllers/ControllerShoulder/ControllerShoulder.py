@@ -139,8 +139,6 @@ while True:
         last_known_angles.elbow = message.last_known_angles.elbow
         last_known_angles.overarm = message.last_known_angles.overarm
 
-        # TODO: On first received good message, activate a timeout that returns motors to starting position if communication stops (message not reveived for X ms)? (tapping into the wait loop above)
-
         # Now move as instructed:
         if message.movement_mode == MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT:
             break

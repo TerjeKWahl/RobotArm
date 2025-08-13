@@ -6,6 +6,7 @@ the API defined in Docs/APIs.md.
 
 import ctypes
 import enum
+import numpy as np
 
 # Constants
 UNKNOWN_ANGLE = -128  # Value used to indicate unknown angle
@@ -28,6 +29,7 @@ class InformationSource(enum.IntEnum):
     PC_APP = 21                # PC app
 
 
+
 # Define struct for joint angles:
 class JointAngles(ctypes.Structure):
     _fields_ = [
@@ -45,6 +47,14 @@ class JointAngles(ctypes.Structure):
         return (f"Gripper: {self.gripper}, Wrist: {self.wrist}, Underarm: {self.underarm}, "
                 f"Elbow: {self.elbow}, Overarm: {self.overarm}, Shoulder out: {self.shoulder_out}, "
                 f"Shoulder forward: {self.shoulder_forward}")
+
+    def as_np_array_rad(self, seventh_angle_deg):
+        """
+        Convert the joint angles to a NumPy array, and in radians in stead of degrees.
+        """
+        return np.deg2rad(np.array([self.shoulder_forward, self.shoulder_out, self.overarm,
+                          self.elbow, self.underarm, self.wrist, seventh_angle_deg], dtype=np.float32))
+
 
 
 # Define struct for 4x4 matrix (used in VR-PC communication):
@@ -64,6 +74,7 @@ class Matrix4x4(ctypes.Structure):
                 f"[{self.m30:8.3f} {self.m31:8.3f} {self.m32:8.3f} {self.m33:8.3f}]")
 
 
+
 class MessageFromPcToController(ctypes.Structure):
     _fields_ = [
         ("prefix_t", ctypes.c_char),
@@ -75,6 +86,7 @@ class MessageFromPcToController(ctypes.Structure):
     ]
 
 
+
 class MessageFromControllerToPC(ctypes.Structure):
     _fields_ = [
         ("prefix_t", ctypes.c_char),
@@ -84,6 +96,7 @@ class MessageFromControllerToPC(ctypes.Structure):
         ("error_code", ctypes.c_int8),
         ("current_angles", JointAngles)
     ]
+
 
 
 class MessageFromPcToVR(ctypes.Structure):
@@ -100,6 +113,7 @@ class MessageFromPcToVR(ctypes.Structure):
     ]
 
 
+
 class MessageFromVRToPC(ctypes.Structure):
     _fields_ = [
         ("prefix_t", ctypes.c_char),
@@ -112,6 +126,7 @@ class MessageFromVRToPC(ctypes.Structure):
         ("reserved_3", ctypes.c_int8),
         ("matrix_4x4", Matrix4x4)
     ]
+
 
 
 def create_message_from_PC_to_controller(movement_mode: MovementMode, 
@@ -134,16 +149,6 @@ def create_message_from_PC_to_controller(movement_mode: MovementMode,
     desired_angles.shoulder_out = max(-128, min(127, desired_angles.shoulder_out))
     desired_angles.shoulder_forward = max(-128, min(127, desired_angles.shoulder_forward))
 
-    # TODO: Remove when no longer necessary for testing:
-    # Clip desired angles to valid range based on limits:
-    desired_angles.gripper = max(-128, min(127, desired_angles.gripper))
-    desired_angles.wrist = max(-110, min(110, desired_angles.wrist))
-    desired_angles.underarm = max(-120, min(120, desired_angles.underarm))
-    desired_angles.elbow = max(-20, min(13, desired_angles.elbow))
-    desired_angles.overarm = max(-120, min(35, desired_angles.overarm))
-    desired_angles.shoulder_out = max(0, min(35, desired_angles.shoulder_out))
-    desired_angles.shoulder_forward = max(-10, min(45, desired_angles.shoulder_forward))
-
     message = MessageFromPcToController(
         prefix_t = b'T',
         prefix_w = b'W',
@@ -153,6 +158,7 @@ def create_message_from_PC_to_controller(movement_mode: MovementMode,
         last_known_angles = last_known_angles
     )
     return ctypes.string_at(ctypes.byref(message), ctypes.sizeof(message))
+
 
 
 def parse_message_from_controller_to_PC(data: bytes) -> MessageFromControllerToPC:
@@ -182,6 +188,7 @@ def parse_message_from_controller_to_PC(data: bytes) -> MessageFromControllerToP
     return message
 
 
+
 def create_message_from_PC_to_VR(last_known_pose_matrix_4x4: Matrix4x4) -> bytes:
     """
     Creates a message to send from the PC to the VR app.
@@ -204,6 +211,7 @@ def create_message_from_PC_to_VR(last_known_pose_matrix_4x4: Matrix4x4) -> bytes
     
     message_bytes = ctypes.string_at(ctypes.byref(message), ctypes.sizeof(message))
     return message_bytes
+
 
 
 def parse_message_from_VR_to_PC(data: bytes) -> MessageFromVRToPC:

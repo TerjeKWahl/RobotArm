@@ -58,54 +58,71 @@ class MessageFromControllerToPC:
         self.current_angles = current_angles
 
 
-def sanitize_angles(joint_angles: JointAngles):
+
+def __sanitize_angles(joint_angles: JointAngles):
     """
     Checks for illegal angles, and corrects them if they are too large or too small.
+    Assumes that measures have already been taken (in the PC side) to avoid crashing into
+    the table/desk or the robot torso.
+
+    :param joint_angles: The joint angles to sanitize, in degrees.
     """
 
     # TODO: Compensate a limit when b is moving, etc
 
-    if joint_angles.wrist > 110:
+    # Joint angle limits copied from Configuration.py:
+    joint_limits_deg = [
+        [-35, 45],    # Joint 1 (shoulder forward)
+        [-10, 35],    # Joint 2 (shoulder out/up): 
+        [-120, 120],  # Joint 3 (overarm):        
+        [-90, 15],    # Joint 4 (elbow):          
+        [-120, 120],  # Joint 5 (underarm):       
+        [-110, 110],  # Joint 6 (wrist):           - Wrist left/right (as seen when right thumb is up)
+        [-70, 70]     # Joint 7 (wrist other way): - This joint is not physically on the robot (yet), but greatly improves IK solutions and control stability as a "virtual" joint (for now)
+    ]
+
+    if joint_angles.wrist > joint_limits_deg[5][1]:
         print("Warning: wrist value too large.")
-        joint_angles.wrist = 110
-    if joint_angles.wrist < -110:
+        joint_angles.wrist = joint_limits_deg[5][1]
+    if joint_angles.wrist < joint_limits_deg[5][0]:
         print("Warning: wrist value too small.")
-        joint_angles.wrist = -110
+        joint_angles.wrist = joint_limits_deg[5][0]
 
-    if joint_angles.underarm > 120:
+    if joint_angles.underarm > joint_limits_deg[4][1]:
         print("Warning: underarm value too large.")
-        joint_angles.underarm = 120
-    if joint_angles.underarm < -120:
+        joint_angles.underarm = joint_limits_deg[4][1]
+    if joint_angles.underarm < joint_limits_deg[4][0]:
         print("Warning: underarm value too small.")
-        joint_angles.underarm = -120
+        joint_angles.underarm = joint_limits_deg[4][0]
 
-    if joint_angles.elbow > 13:
+    if joint_angles.elbow > joint_limits_deg[3][1]:
         print("Warning: elbow value too large.")
-        joint_angles.elbow = 13
-    if joint_angles.elbow < -20:
+        joint_angles.elbow = joint_limits_deg[3][1]
+    if joint_angles.elbow < joint_limits_deg[3][0]:
         print("Warning: elbow value too small.")
-        joint_angles.elbow = -20
+        joint_angles.elbow = joint_limits_deg[3][0]
 
-    if joint_angles.overarm > 35:
+    if joint_angles.overarm > joint_limits_deg[2][1]:
         print("Warning: overarm value too large.")
-        joint_angles.overarm = 35
-    if joint_angles.overarm < -120:
+        joint_angles.overarm = joint_limits_deg[2][1]
+    if joint_angles.overarm < joint_limits_deg[2][0]:
         print("Warning: overarm value too small.")
-        joint_angles.overarm = -120
+        joint_angles.overarm = joint_limits_deg[2][0]
 
-    if joint_angles.shoulder_out > 35:
+    if joint_angles.shoulder_out > joint_limits_deg[1][1]:
         print("Warning: shoulder_out value too large.")
-        joint_angles.shoulder_out = 35
-    if joint_angles.shoulder_out < 0: # TODO: Make slightly more liberal
+        joint_angles.shoulder_out = joint_limits_deg[1][1]
+    if joint_angles.shoulder_out < joint_limits_deg[1][0]:
         print("Warning: shoulder_out value too small.")
-        joint_angles.shoulder_out = 0
+        joint_angles.shoulder_out = joint_limits_deg[1][0]
 
-    if joint_angles.shoulder_forward > 45:
+    if joint_angles.shoulder_forward > joint_limits_deg[0][1]:
         print("Warning: shoulder_forward value too large.")
-        joint_angles.shoulder_forward = 45
-    if joint_angles.shoulder_forward < -10: # TODO: Make more liberal, but depending on overarm twist and elbow angle
+        joint_angles.shoulder_forward = joint_limits_deg[0][1]
+    if joint_angles.shoulder_forward < joint_limits_deg[0][0]:
         print("Warning: shoulder_forward value too small.")
-        joint_angles.shoulder_forward = -10
+        joint_angles.shoulder_forward = joint_limits_deg[0][0]
+
 
 
 def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromPCToController]:
@@ -142,7 +159,7 @@ def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromP
     #print(f"t={message.prefix_t} w={message.prefix_w} sf={message.desired_angles.shoulder_forward} so={message.desired_angles.shoulder_out}")
 
     # Always sanitize the received data to check for invalid angles:
-    sanitize_angles(message.desired_angles)
+    __sanitize_angles(message.desired_angles)
 
     if (message.prefix_t != 84) or (message.prefix_w != 87): # 84 is ASCII "T" and 87 is ASCII "W"
         print(f"Invalid prefix: Got {data[0:2]} but expected b'TW'")
@@ -158,6 +175,7 @@ def parse_message_from_PC_to_controller(data: bytes) -> tuple[bool, MessageFromP
         return False, message
 
     return True, message
+
 
 
 def create_message_from_controller_to_PC(information_source: int, current_angles: JointAngles) -> bytes:

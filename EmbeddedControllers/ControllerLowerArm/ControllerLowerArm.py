@@ -168,8 +168,6 @@ while True:
         last_known_angles.shoulder_out = message.last_known_angles.shoulder_out
         last_known_angles.shoulder_forward = message.last_known_angles.shoulder_forward
 
-        # TODO: On first received good message, activate a timeout that returns motors to starting position if communication stops (message not reveived for X ms)? (tapping into the wait loop above)
-
         # Now move as instructed:
         if message.movement_mode == MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT:
             break
