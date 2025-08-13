@@ -125,7 +125,34 @@ def __get_pos_in_robot_coordinate_system_se3(vr_unity_matrix_4x4: Matrix4x4) -> 
 
     return pos_in_robot_coordinate_system_se3
 
+
+
+def __transform_to_vr_coordinate_system(robot_pose_se3: SE3) -> np.ndarray:
+    """
+    Transform a pose from the robot's coordinate system back to Unity's VR coordinate system.
+    This is the inverse of the transformation done in __get_pos_in_robot_coordinate_system_se3.
     
+    :param robot_pose_se3: SE3 pose in robot coordinate system
+    :return: 4x4 transformation matrix in Unity/VR coordinate system
+    """
+    global unity_to_robot_rotation, unity_to_robot_rotation_inv, unity_position_offset, robot_position_offset
+    
+    # Get the 4x4 matrix from SE3
+    robot_matrix = robot_pose_se3.A
+    
+    # Remove the robot position offset
+    robot_matrix_without_offset = robot_matrix.copy()
+    robot_matrix_without_offset[:3, 3] -= robot_position_offset
+    
+    # Transform back to Unity coordinate system (inverse of the original transformation)
+    unity_matrix = np.dot(np.dot(unity_to_robot_rotation_inv, robot_matrix_without_offset), unity_to_robot_rotation)
+    
+    # Add back the Unity position offset
+    unity_matrix[:3, 3] += unity_position_offset
+    
+    return unity_matrix
+
+
 
 def get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_angles: JointAngles) -> Matrix4x4: 
     """
@@ -145,23 +172,24 @@ def get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_ang
         last_known_angles.wrist,
         last_desired_7th_joint_angle_deg
     ]))
-    position_and_angle_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
+    pose_se3 = robot_arm.fkine(q) # Calculate the forward kinematics to get the end-effector pose
 
-    # TODO Implement
+    # Transform the position and orientation into the VR/Unity coordinate system
+    pose_transformed_to_vr_coordinate_system = __transform_to_vr_coordinate_system(pose_se3)
 
     matrix_4x4 = Matrix4x4()
-    matrix_4x4.m00 = position_and_angle_se3[0, 0]
-    matrix_4x4.m01 = position_and_angle_se3[0, 1]
-    matrix_4x4.m02 = position_and_angle_se3[0, 2]
-    matrix_4x4.m03 = position_and_angle_se3[0, 3]
-    matrix_4x4.m10 = position_and_angle_se3[1, 0]
-    matrix_4x4.m11 = position_and_angle_se3[1, 1]
-    matrix_4x4.m12 = position_and_angle_se3[1, 2]
-    matrix_4x4.m13 = position_and_angle_se3[1, 3]
-    matrix_4x4.m20 = position_and_angle_se3[2, 0]
-    matrix_4x4.m21 = position_and_angle_se3[2, 1]
-    matrix_4x4.m22 = position_and_angle_se3[2, 2]
-    matrix_4x4.m23 = position_and_angle_se3[2, 3]
+    matrix_4x4.m00 = pose_transformed_to_vr_coordinate_system[0, 0]
+    matrix_4x4.m01 = pose_transformed_to_vr_coordinate_system[0, 1]
+    matrix_4x4.m02 = pose_transformed_to_vr_coordinate_system[0, 2]
+    matrix_4x4.m03 = pose_transformed_to_vr_coordinate_system[0, 3]
+    matrix_4x4.m10 = pose_transformed_to_vr_coordinate_system[1, 0]
+    matrix_4x4.m11 = pose_transformed_to_vr_coordinate_system[1, 1]
+    matrix_4x4.m12 = pose_transformed_to_vr_coordinate_system[1, 2]
+    matrix_4x4.m13 = pose_transformed_to_vr_coordinate_system[1, 3]
+    matrix_4x4.m20 = pose_transformed_to_vr_coordinate_system[2, 0]
+    matrix_4x4.m21 = pose_transformed_to_vr_coordinate_system[2, 1]
+    matrix_4x4.m22 = pose_transformed_to_vr_coordinate_system[2, 2]
+    matrix_4x4.m23 = pose_transformed_to_vr_coordinate_system[2, 3]
     matrix_4x4.m30 = 0
     matrix_4x4.m31 = 0
     matrix_4x4.m32 = 0
