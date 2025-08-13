@@ -14,6 +14,8 @@ from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orie
     get_VR_position_and_orientation_matrix_from_last_known_angles
 
 
+VR_FOLLOWING_PERIOD_MS = 20 # 20 gives frequency of 50Hz, but might slow down now and them because of waiting for send tasks to finish
+
 desired_angles = JointAngles(
     gripper = 0,
     wrist = 0,
@@ -94,7 +96,7 @@ async def control_robot_arm_vr_following_mode():
         #print("Message sent to the hub.")
 
         # Send messages to VR every iteration of this eternal loop (same frequency as messages sent to Lego Technic hubs)
-        last_known_pose_matrix_4x4 = await get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_angles)
+        last_known_pose_matrix_4x4 = get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_angles)
         #print(f"Calculated last known pose: {last_known_pose_matrix_4x4}")
         message_to_VR = create_message_from_PC_to_VR(
             last_known_pose_matrix_4x4 = last_known_pose_matrix_4x4
@@ -105,8 +107,7 @@ async def control_robot_arm_vr_following_mode():
             await send_to_VR_task
         send_to_VR_task = asyncio.create_task(send_to_VR(message_to_VR))
 
-        wait_time_ms = 20 # TODO: Make faster and move this to a configuration constant.
-        await asyncio.sleep(wait_time_ms / 1000)
+        await asyncio.sleep(VR_FOLLOWING_PERIOD_MS / 1000)
 
 
 
