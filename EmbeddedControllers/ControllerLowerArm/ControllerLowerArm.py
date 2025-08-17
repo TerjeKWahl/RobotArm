@@ -26,10 +26,10 @@ stopwatch.resume()
 receive_buffer = bytearray(REC_MSG_LENGTH)
 
 # Motor definitions, including gearing ratios:
-wrist    = a = Motor(Port.A, positive_direction=Direction.CLOCKWISE, reset_angle=False, gears=[12, 32]) # Wrist left/right (as seen when right thumb is up)
-underarm = b = Motor(Port.B, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[12, 20],[8,28]]) # Underarm twist
-elbow    = c = Motor(Port.C, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[1, 24],[20,28]]) # Elbow
-overarm  = d = Motor(Port.D, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[8, 24],[12,60]]) # Overarm twist
+wrist    = a = Motor(Port.A, positive_direction=Direction.CLOCKWISE,        reset_angle=False, gears=[[20, 12], [ 1, 12], [12, 32]]) # Wrist left/right (as seen when right thumb is up)
+underarm = b = Motor(Port.B, positive_direction=Direction.CLOCKWISE       , reset_angle=False, gears=[[ 8, 24], [12, 20], [ 8, 28]]) # Underarm twist
+elbow    = c = Motor(Port.C, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[ 1, 24], [20, 28]]) # Elbow
+overarm  = d = Motor(Port.D, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[ 8, 24], [12, 60]]) # Overarm twist
 
 last_known_angles = JointAngles(set_all_unknown = True)
 last_send_time = 0
@@ -97,7 +97,17 @@ d.run_target(1500, 0, then=Stop.HOLD, wait=True)
 #d.reset_angle(0)
 #wait(2000)
 
-
+"""
+wait(1000)
+wrist.run_target(1500, 180, then=Stop.HOLD, wait=True)
+wait(1000)
+wrist.run_target(1500, 0, then=Stop.HOLD, wait=True)
+wait(1000)
+wrist.run_target(1500, -180, then=Stop.HOLD, wait=True)
+wait(1000)
+wrist.run_target(1500, 0, then=Stop.HOLD, wait=False)
+wrist.run_target(1500, 0, then=Stop.HOLD, wait=True)
+"""
 """
 # A dummy sequence for testing:
 wrist.run_target(1500, 110, then=Stop.HOLD, wait=True)
