@@ -20,13 +20,14 @@ from RobotMessageBuilderEmbedded import JointAngles, MessageFromPCToController, 
 PRINT_DEBUG_INFO = False # Set to True to enable debug messages via printing to stdout. This will interfere with Bluetooth communication that also uses stdout!
 SEND_PERIOD_MS = 20 # How often to send current angles to the PC app
 
+is_continuous_tracking = False
 hub = TechnicHub()
 stopwatch = StopWatch()
 stopwatch.resume()
 receive_buffer = bytearray(REC_MSG_LENGTH)
 
 # Motor definitions, including gearing ratios:
-wrist    = a = Motor(Port.A, positive_direction=Direction.CLOCKWISE,        reset_angle=False, gears=[[20, 12], [ 1, 12], [12, 32]]) # Wrist left/right (as seen when right thumb is up)
+wrist    = a = Motor(Port.A, positive_direction=Direction.CLOCKWISE,        reset_angle=False, gears=[[20, 12], [ 1, 12], [12, 28]]) # Wrist left/right (as seen when right thumb is up)
 underarm = b = Motor(Port.B, positive_direction=Direction.CLOCKWISE       , reset_angle=False, gears=[[ 8, 24], [12, 20], [ 8, 28]]) # Underarm twist
 elbow    = c = Motor(Port.C, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[ 1, 24], [20, 28]]) # Elbow
 overarm  = d = Motor(Port.D, positive_direction=Direction.COUNTERCLOCKWISE, reset_angle=False, gears=[[ 8, 24], [12, 60]]) # Overarm twist
@@ -68,6 +69,28 @@ def send_current_angles_to_pc(last_known_angles: JointAngles):
     stdout.flush()  # Ensure the message is sent immediately
 
 
+
+def track_with_compensated_angles(desired_angles : JointAngles, last_known_angles : JointAngles):
+    """
+    Adjusts the motor targets based on the desired angles and the last known angles.
+    This compensates for any differences in the arm's position.
+    Assumes that the last known angles are just read and therefore relatively accurate.
+    """
+    # Calculate the compensation of underarm due to elbow angle
+    underarm_compensation = last_known_angles.elbow * (28/12) * (12/20) * (8/28)
+
+    # Calculate the compensation of wrist due to underarm and elbow angles
+    wrist_compensation_due_to_underarm = last_known_angles.underarm * (12/28)
+    wrist_compensation_due_to_elbow = last_known_angles.elbow * (28/12) * (12/28)
+
+    # Track the compensated angles of the motors
+    wrist.track_target(desired_angles.wrist + wrist_compensation_due_to_underarm + wrist_compensation_due_to_elbow)
+    underarm.track_target(desired_angles.underarm + underarm_compensation)
+    elbow.track_target(desired_angles.elbow)
+    overarm.track_target(desired_angles.overarm)
+
+
+
 print_debug("Control limits (speed, acceleration, torque):")
 print_debug(a.control.limits())
 print_debug(b.control.limits())
@@ -97,19 +120,61 @@ d.run_target(1500, 0, then=Stop.HOLD, wait=True)
 #d.reset_angle(0)
 #wait(2000)
 
+# Dummy sequences for testing:
 """
-wait(1000)
 wrist.run_target(1500, 180, then=Stop.HOLD, wait=True)
 wait(1000)
 wrist.run_target(1500, 0, then=Stop.HOLD, wait=True)
 wait(1000)
 wrist.run_target(1500, -180, then=Stop.HOLD, wait=True)
 wait(1000)
-wrist.run_target(1500, 0, then=Stop.HOLD, wait=False)
 wrist.run_target(1500, 0, then=Stop.HOLD, wait=True)
+wait(1000)
 """
 """
-# A dummy sequence for testing:
+underarm.run_target(1500, 180, then=Stop.HOLD, wait=True)
+wait(1000)
+underarm.run_target(1500, 0, then=Stop.HOLD, wait=True)
+wait(1000)
+underarm.run_target(1500, -180, then=Stop.HOLD, wait=True)
+wait(1000)
+underarm.run_target(1500, 0, then=Stop.HOLD, wait=True)
+wait(1000)
+"""
+"""
+wrist.run_target(1500, 90*12/28, then=Stop.HOLD, wait=False) # Compensate wrist when underarm is moving
+underarm.run_target(1500, 90, then=Stop.HOLD, wait=True)
+wait(1000)
+wrist.run_target(1500, 0*12/28, then=Stop.HOLD, wait=False) # Compensate wrist when underarm is moving
+underarm.run_target(1500, 0, then=Stop.HOLD, wait=True)
+wait(1000)
+wrist.run_target(1500, -90*12/28, then=Stop.HOLD, wait=False) # Compensate wrist when underarm is moving
+underarm.run_target(1500, -90, then=Stop.HOLD, wait=True)
+wait(1000)
+wrist.run_target(1500, 0*12/28, then=Stop.HOLD, wait=False) # Compensate wrist when underarm is moving
+underarm.run_target(1500, 0, then=Stop.HOLD, wait=True)
+wait(1000)
+"""
+"""
+#wait(1000)
+#elbow.run_target(1500, 10, then=Stop.HOLD, wait=True)
+#wait(1000)
+#elbow.run_target(1500, 0, then=Stop.HOLD, wait=True)
+wait(1000)
+desired_elbow_angle = -80
+desired_underarm_angle = -90
+underarm_compensation = desired_elbow_angle*(28/12)*(12/20)*(8/28)
+underarm.run_target(1500, desired_underarm_angle + underarm_compensation, then=Stop.HOLD, wait=False) # Compensate underarm when elbow is moving
+wrist_compensation_due_to_underarm = desired_underarm_angle*(12/28)
+wrist_compensation_due_to_elbow = desired_elbow_angle*(28/12)*(12/28)
+wrist.run_target(1500, wrist_compensation_due_to_underarm + wrist_compensation_due_to_elbow , then=Stop.HOLD, wait=False) # Compensate wrist when underarm and elbow is moving
+elbow.run_target(1500, desired_elbow_angle, then=Stop.HOLD, wait=True)
+wait(2000)
+underarm.run_target(1500, 0, then=Stop.HOLD, wait=False) # Compensate underarm when elbow is moving
+wrist.run_target(1500, 0, then=Stop.HOLD, wait=False) # Compensate wrist when underarm and elbow is moving
+elbow.run_target(1500, 0, then=Stop.HOLD, wait=True)
+"""
+"""
 wrist.run_target(1500, 110, then=Stop.HOLD, wait=True)
 wrist.run_target(1500, -110, then=Stop.HOLD, wait=True)
 wrist.run_target(1500, 0, then=Stop.HOLD, wait=False)
@@ -156,7 +221,9 @@ while True:
         if current_time - last_send_time >= SEND_PERIOD_MS:
             send_current_angles_to_pc(last_known_angles)
             last_send_time = current_time
-        
+            if is_continuous_tracking:
+                track_with_compensated_angles(message.desired_angles, last_known_angles)
+
         wait(1)
 
     # Read message from stdin
@@ -178,15 +245,15 @@ while True:
         last_known_angles.shoulder_out = message.last_known_angles.shoulder_out
         last_known_angles.shoulder_forward = message.last_known_angles.shoulder_forward
 
+        is_continuous_tracking = False
+
         # Now move as instructed:
         if message.movement_mode == MOVEMENT_MODE_RETURN_TO_ZERO_AND_EXIT:
             break
         elif message.movement_mode == MOVEMENT_MODE_MOVE_FAST:
+            is_continuous_tracking = True
             # Move all joints as fast as possible (for continuous tracking)
-            wrist.track_target(message.desired_angles.wrist)
-            underarm.track_target(message.desired_angles.underarm)
-            elbow.track_target(message.desired_angles.elbow)
-            overarm.track_target(message.desired_angles.overarm)
+            track_with_compensated_angles(message.desired_angles, last_known_angles)
         elif message.movement_mode == MOVEMENT_MODE_RUN_TO_TARGET:
             # Move to target with smooth acceleration and deceleration (run to target)
             wrist.run_target(   1500, message.desired_angles.wrist, then=Stop.HOLD, wait=False)
@@ -203,6 +270,8 @@ while True:
     if current_time - last_send_time >= SEND_PERIOD_MS:
         send_current_angles_to_pc(last_known_angles)            
         last_send_time = current_time
+        if is_continuous_tracking:
+            track_with_compensated_angles(message.desired_angles, last_known_angles)
 
 
 
