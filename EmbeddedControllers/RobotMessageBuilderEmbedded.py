@@ -75,7 +75,7 @@ def __sanitize_angles(joint_angles: JointAngles):
         [-35, 45],    # Joint 1 (shoulder forward)
         [-10, 35],    # Joint 2 (shoulder out/up): 
         [-120, 120],  # Joint 3 (overarm):        
-        [-90, 15],    # Joint 4 (elbow):          
+        [-85, 23],    # Joint 4 (elbow):          
         [-120, 120],  # Joint 5 (underarm):       
         [-110, 110],  # Joint 6 (wrist):           - Wrist left/right (as seen when right thumb is up)
         [-70, 70]     # Joint 7 (wrist other way): - This joint is not physically on the robot (yet), but greatly improves IK solutions and control stability as a "virtual" joint (for now)

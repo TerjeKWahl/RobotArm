@@ -185,8 +185,10 @@ underarm.run_target(1500, -120, then=Stop.HOLD, wait=True)
 underarm.run_target(1500, 0, then=Stop.HOLD, wait=False)
 underarm.run_target(1500, 0, then=Stop.HOLD, wait=True)
 
-elbow.run_target(1500, 13, then=Stop.HOLD, wait=True)
+elbow.run_target(1500, 23, then=Stop.HOLD, wait=True)
+wait(1000)
 elbow.run_target(1500, -20, then=Stop.HOLD, wait=True)
+wait(1000)
 elbow.run_target(1500, 0, then=Stop.HOLD, wait=False)
 
 overarm.run_target(1500, 35, then=Stop.HOLD, wait=True)
