@@ -35,10 +35,30 @@ overarm  = d = Motor(Port.D, positive_direction=Direction.COUNTERCLOCKWISE, rese
 last_known_angles = JointAngles(set_all_unknown = True)
 last_send_time = 0
 last_receive_time = 0
+desired_angle_wrist = 0
+desired_angle_underarm = 0
+
 
 def print_debug(string):
     if PRINT_DEBUG_INFO:
         print(string)
+
+
+
+def get_compensations_for_angles(last_known_angles: JointAngles):
+    """
+    Calculates the compensations needed for the wrist and underarm angles based on the last known angles.
+    """
+    # Calculate the compensation of underarm due to elbow angle
+    underarm_compensation = last_known_angles.elbow * 0.4 # (28/12) * (12/20) * (8/28)
+
+    # Calculate the compensation of wrist due to underarm and elbow angles
+    wrist_compensation_due_to_underarm = last_known_angles.underarm * 0.428571429 # (12/28)
+    wrist_compensation_due_to_elbow = last_known_angles.elbow # * (28/12) * (12/28), which is 1
+    wrist_compensation = wrist_compensation_due_to_underarm + wrist_compensation_due_to_elbow
+
+    return wrist_compensation, underarm_compensation
+
 
 
 def send_current_angles_to_pc(last_known_angles: JointAngles):
@@ -57,9 +77,12 @@ def send_current_angles_to_pc(last_known_angles: JointAngles):
     last_known_angles.overarm = known_angle_overarm
 
     # Create JointAngles with only lower arm angles known
+    # Subtract compensation of wrist and underarm to report in the same way the desired 
+    # angle is used, to avoid the robot arm being unstable (wiggling)
+    wrist_compensation, underarm_compensation = get_compensations_for_angles(last_known_angles)
     current_angles = JointAngles(set_all_unknown=True)
-    current_angles.wrist = known_angle_wrist
-    current_angles.underarm = known_angle_underarm
+    current_angles.wrist = known_angle_wrist - int(wrist_compensation+0.5)
+    current_angles.underarm = known_angle_underarm - int(underarm_compensation+0.5)
     current_angles.elbow = known_angle_elbow
     current_angles.overarm = known_angle_overarm
 
@@ -70,22 +93,17 @@ def send_current_angles_to_pc(last_known_angles: JointAngles):
 
 
 
-def track_compensated_angles(desired_angles : JointAngles, last_known_angles : JointAngles):
+def track_compensated_angles(desired_angle_wrist, desired_angle_underarm, last_known_angles : JointAngles):
     """
     Adjusts the wrist and underarm motor targets based on the desired angles and the last known angles.
     Assumes that the last known angles are just read and therefore relatively accurate.
     Note: This function does not control the elbow and overarm motors.
     """
-    # Calculate the compensation of underarm due to elbow angle
-    underarm_compensation = last_known_angles.elbow * 0.4 # (28/12) * (12/20) * (8/28)
-
-    # Calculate the compensation of wrist due to underarm and elbow angles
-    wrist_compensation_due_to_underarm = last_known_angles.underarm * 0.428571429 # (12/28)
-    wrist_compensation_due_to_elbow = last_known_angles.elbow # * (28/12) * (12/28), which is 1
+    wrist_compensation, underarm_compensation = get_compensations_for_angles(last_known_angles)
 
     # Track the compensated angles of the motors
-    wrist.track_target(desired_angles.wrist + wrist_compensation_due_to_underarm + wrist_compensation_due_to_elbow)
-    underarm.track_target(desired_angles.underarm + underarm_compensation)
+    wrist.track_target(desired_angle_wrist + wrist_compensation)
+    underarm.track_target(desired_angle_underarm + underarm_compensation)
 
 
 
@@ -211,6 +229,7 @@ while True:
             if not is_timeout_already_expired:
                 hub.light.blink(Color.VIOLET,[600,200]) # Violet blinking to indicate waiting for connection/data to begin or resume.
                 is_timeout_already_expired = True
+                is_continuous_tracking = False
                 # Move back to start position when no message is received for a while
                 a.run_target(1500, 0, then=Stop.HOLD, wait=False)
                 b.run_target(1500, 0, then=Stop.HOLD, wait=False)
@@ -222,7 +241,7 @@ while True:
             send_current_angles_to_pc(last_known_angles)
             last_send_time = current_time
             if is_continuous_tracking:
-                track_compensated_angles(message.desired_angles, last_known_angles)
+                track_compensated_angles(desired_angle_wrist, desired_angle_underarm, last_known_angles)
 
         wait(1)
 
@@ -256,7 +275,9 @@ while True:
             # Update last known angles that are most important for tracking
             last_known_angles.underarm = underarm.angle()
             last_known_angles.elbow = elbow.angle()
-            track_compensated_angles(message.desired_angles, last_known_angles) # Controls the wrist and underarm motors
+            desired_angle_wrist = message.desired_angles.wrist
+            desired_angle_underarm = message.desired_angles.underarm
+            track_compensated_angles(desired_angle_wrist, desired_angle_underarm, last_known_angles) # Controls the wrist and underarm motors
             elbow.track_target(message.desired_angles.elbow)
             overarm.track_target(message.desired_angles.overarm)
         elif message.movement_mode == MOVEMENT_MODE_RUN_TO_TARGET:
@@ -276,7 +297,7 @@ while True:
         send_current_angles_to_pc(last_known_angles)            
         last_send_time = current_time
         if is_continuous_tracking:
-            track_compensated_angles(message.desired_angles, last_known_angles)
+            track_compensated_angles(desired_angle_wrist, desired_angle_underarm, last_known_angles)
 
 
 
