@@ -1,17 +1,15 @@
 /**
- * Controlling a TowerPro MG996R servo,
- * using an Arduino Uno R4 WiFi. 
+ * Controlling a servo using an Arduino Uno R4 WiFi. 
  * 
- * Servo specs:
+ * Servo used: 
+ * Geekservo 2KG Mini Servo 360 Degree
  * ------------
- * Weight: 55g
- * Dimension: 40.7×19.7×42.9mm
- * Stall torque: 9.4kg/cm (4.8v); 11kg/cm (6.0v)
- * Operating speed: 0.19sec/60degree (4.8v); 0.15sec/60degree (6.0v)
- * Operating voltage: 4.8 ~ 6.6v
- * Current draw at idle 10mA
- * No load operating current draw 170mA
- * Stall current draw 1400mA
+ * Weight: 20g
+ * Operating voltage: 4.8V - 6.0V
+ * Operating speed (at no load) 0.14±0.01sec/60° 0.12±0.01sec/60°
+ * Running current (at no load) 70±20mA 90±20mA
+ * Stall torque (at locked) 1.8±0.2kg-cm 2±0.2kg-cm
+ * Stall current (at locked) 0.8±0.1A 0.9±0.1A
  * 
  * Wiring:
  * Brown: GND
@@ -27,7 +25,7 @@
 const int16_t SERVO_PIN = 9;
 const uint32_t MAX_WAIT_TIME_FOR_SERIAL_MS = 3000; // Maximum wait time for serial connection to start working on startup, in milliseconds
 
-Servo gripper; 
+Servo gripperServo; 
 int16_t servoPositionDegrees = 0;
 
 int wifiStatus = WL_IDLE_STATUS;
@@ -51,7 +49,7 @@ void setup()
     matrix.begin();
     matrix.loadFrame(LEDMATRIX_CHIP); // Boot screen
     
-    gripper.attach(SERVO_PIN);
+    gripperServo.attach(SERVO_PIN);
 
     while (!Serial && (millis() < MAX_WAIT_TIME_FOR_SERIAL_MS)) {
         ; // Wait for serial port to connect.
@@ -114,7 +112,7 @@ void loop()
             servoPositionDegrees = 0;
         }
 
-        gripper.write(servoPositionDegrees);
+        gripperServo.write(servoPositionDegrees);
         updateFrame(frame, servoPositionDegrees);
         matrix.loadFrame(frame);
 
