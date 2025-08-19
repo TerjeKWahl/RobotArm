@@ -85,7 +85,7 @@ void loop()
     while(true)
     {
         // Demo mode
-        uint32_t demoDurationWantedMs = 20000; // Duration of demo mode before going into normal remote control function. Set to 0 to skip demo mode.
+        uint32_t demoDurationWantedMs = 0; //20000; // Duration of demo mode before going into normal remote control function. Set to 0 to skip demo mode.
         uint32_t currentTimeMs = millis();
         uint32_t demoStartMs = currentTimeMs;
         int16_t servoPositionDegrees = 0;
@@ -181,7 +181,10 @@ void loop()
                             Serial.println("Failed to parse incoming message.");
                             break; // Exit the inner loop to reconnect
                         }
-                        int16_t servoPositionDegrees = incomingMessage.desiredAngles.gripper;
+                        servoPositionDegrees = incomingMessage.desiredAngles.gripper;
+                        if (incomingMessage.movementMode == RETURN_TO_ZERO) {
+                            servoPositionDegrees = GRIPPER_ANGLE_MAX_DEG; // Full opening of the gripper is the default position ("zero")
+                        }
                         Serial.print("New desired gripper angle: ");
                         Serial.println(servoPositionDegrees);
                         moveGripper(servoPositionDegrees);

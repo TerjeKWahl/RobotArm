@@ -39,16 +39,18 @@ last_known_vr_matrix_4x4_unity_coordinate_system = None  # Last known position a
 # define function pointers to send data to the Lego hubs (Bluetooth) and VR app (UDP).
 send_to_lego_hubs = None  # This will be set later when the Bluetooth connection is established.
 send_to_VR = None         # This will be set later from the caller of control_robot_arm() (main program).
+send_to_Arduino = None    # This will be set later from the caller of control_robot_arm() (main program).
 
 # Thread lock for protecting shared state
 _state_lock = threading.Lock()
 
 
 
-async def control_robot_arm(send_to_lego_hubs_function, send_to_VR_function):
-    global send_to_lego_hubs, send_to_VR
+async def control_robot_arm(send_to_lego_hubs_function, send_to_VR_function, send_to_Arduino_function):
+    global send_to_lego_hubs, send_to_VR, send_to_Arduino
     send_to_lego_hubs = send_to_lego_hubs_function
     send_to_VR = send_to_VR_function
+    send_to_Arduino = send_to_Arduino_function
     print("Starting to control the robot arm...")
     if RUN_MODE == RunMode.DEMO_MODE:
         await control_robot_arm_demo_mode()
@@ -66,11 +68,13 @@ async def control_robot_arm_vr_following_mode():
     and send them to the robot arm.
     """
     global desired_angles, last_known_angles, last_known_vr_matrix_4x4_unity_coordinate_system
+    global send_to_lego_hubs, send_to_VR, send_to_Arduino
 
     print("Running in VR following mode.")
 
     send_to_lego_hubs_task = None  # Task for sending messages to the Lego hubs
     send_to_VR_task = None         # Task for sending messages to the VR app
+    send_to_Arduino_task = None    # Task for sending messages to the Arduino app
     while True:
         if last_known_vr_matrix_4x4_unity_coordinate_system is not None:
             # Try to calculate new desired angles every time a message is received from the VR app:
@@ -95,6 +99,11 @@ async def control_robot_arm_vr_following_mode():
         send_to_lego_hubs_task = asyncio.create_task(send_to_lego_hubs(message_to_controller))
         #print("Message sent to the hub.")
 
+        if send_to_Arduino_task is not None and not send_to_Arduino_task.done():
+            print("Waiting for previous send_to_Arduino_task to finish...")
+            await send_to_Arduino_task
+        send_to_Arduino_task = asyncio.create_task(send_to_Arduino(message_to_controller))
+
         # Send messages to VR every iteration of this eternal loop (same frequency as messages sent to Lego Technic hubs)
         last_known_pose_matrix_4x4 = get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_angles)
         #print(f"Calculated last known pose: {last_known_pose_matrix_4x4}")
@@ -117,6 +126,8 @@ async def control_robot_arm_demo_mode():
     Control the robot arm in demo mode.
     This function sends a series of joint angles to the robot arm to demonstrate its capabilities.
     """
+    desired_gripper_angle_deg = 0
+
     underarm = -60
     underarm_twist = -40
     wrist = -60
@@ -141,7 +152,7 @@ async def control_robot_arm_demo_mode():
     # Send the angles to the robot arm with a delay between each set of angles:
     for _ in range(3):
         for angles in joint_angles_playlist:
-            desired_angles.gripper = 0
+            desired_angles.gripper = desired_gripper_angle_deg
             desired_angles.wrist = angles[5]
             desired_angles.underarm = angles[4]
             desired_angles.elbow = angles[3]
@@ -156,7 +167,12 @@ async def control_robot_arm_demo_mode():
             )
             print("Sending message to the hub:", message)
             await send_to_lego_hubs(message)
+            await send_to_Arduino(message)
             print("Message sent to the hub.")
+
+            desired_gripper_angle_deg = desired_gripper_angle_deg + 15
+            if desired_gripper_angle_deg > 45:
+                desired_gripper_angle_deg = 0 # Restart at 0
 
             wait_time_ms = angles[6]
             await asyncio.sleep(wait_time_ms / 1000)  # Wait to let the hubs process the command.
@@ -208,6 +224,7 @@ async def control_robot_arm_demo_mode():
     )
     print("Sending message to the hub:", message)
     await send_to_lego_hubs(message)
+    await send_to_Arduino(message)
     print("Message sent to the hub.")
 
 
@@ -258,6 +275,7 @@ def handle_message_from_controller_to_PC(data: bytes):
             # Arduino controls gripper
             if message.current_angles.gripper != UNKNOWN_ANGLE:
                 last_known_angles.gripper = message.current_angles.gripper
+                print(f"Updated last known gripper angle: {last_known_angles.gripper}")
                 
         else:
             print(f"Unknown information source: {message.information_source}")

@@ -17,7 +17,9 @@ from Configuration import (
     HUB_NAME_SHOULDER_CONTROLLER,
     HUB_NAME_LOWER_ARM_CONTROLLER,
     VR_IP_ADDRESS,
-    VR_UDP_PORT
+    VR_UDP_PORT,
+    ARDUINO_IP_ADDRESS,
+    ARDUINO_UDP_PORT
 )
 from UdpManager import UdpManager
 
@@ -130,10 +132,22 @@ async def main():
             )
             await vr_UDP_manager.start()
             send_to_VR_function = vr_UDP_manager.send_UDP_packet
-            print("UDP manager created, ready to send messages to the VR app.")
+            print("VR UDP manager created, ready to send messages to the VR app.")
+
+
+            print("Creating UDP manager for communication with the Arduino app.")
+            arduino_UDP_manager = UdpManager(
+                destination_ip = ARDUINO_IP_ADDRESS,
+                port_number = ARDUINO_UDP_PORT,
+                on_message_received = handle_message_from_controller_to_PC
+            )
+            await arduino_UDP_manager.start()
+            send_to_Arduino_function = arduino_UDP_manager.send_UDP_packet
+            print("Arduino UDP manager created, ready to send messages to the Arduino app.")
+
 
             # Defer to RobotArmController.py for the actual robot arm control logic, and provide it references to the send functions.
-            await control_robot_arm(send_to_lego_hubs, send_to_VR_function)
+            await control_robot_arm(send_to_lego_hubs, send_to_VR_function, send_to_Arduino_function)
 
             await vr_UDP_manager.stop()
 
