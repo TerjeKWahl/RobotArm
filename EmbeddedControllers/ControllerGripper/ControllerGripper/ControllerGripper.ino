@@ -10,7 +10,12 @@
  * Running current (at no load) 70±20mA 90±20mA
  * Stall torque (at locked) 1.8±0.2kg-cm 2±0.2kg-cm
  * Stall current (at locked) 0.8±0.1A 0.9±0.1A
- * 
+ * Neutral position:1500μsec
+ * Dead band width: ≤4μsec
+ * Rotating direction: counter Clockwise (1500→500μsec)
+ * Pulse width range: 500→2500 μsec
+ * Maximum travel 360°(500→2500 μsec)
+ *
  * Wiring:
  * Brown: GND
  * Red: VCC (4.8 ~ 6.6v)
@@ -21,6 +26,8 @@
 #include <Servo.h>
 #include <WiFiS3.h>
 #include "WifiSecrets.h"    // Please enter your sensitive data into WifiSecrets.h, by defining SECRET_SSID and SECRET_PASS there.
+#include "Configuration.h"
+#include "RobotMessageManager.h"
 
 const int16_t SERVO_PIN = 9;
 const uint32_t MAX_WAIT_TIME_FOR_SERIAL_MS = 3000; // Maximum wait time for serial connection to start working on startup, in milliseconds
@@ -31,9 +38,6 @@ int16_t servoPositionDegrees = 0;
 int wifiStatus = WL_IDLE_STATUS;
 char ssid[] = SECRET_SSID;  // your network SSID (name)
 char pass[] = SECRET_PASS;  // your network password (use for WPA, or use as key for WEP)
-// Also, make a DHCP reservation on your router for this device, so that it always gets the same IP address that can be used to control the gripper.
-int keyIndex = 0;           // your network key index number (needed only for WEP)
-unsigned int localNetworkPort = 2390; // local port to listen on
 char receiveBuffer[256]; //buffer to hold incoming packet
 char sendBuffer[256] = "TKW"; // a string to send back
 WiFiUDP udp;
@@ -50,6 +54,7 @@ void setup()
     matrix.loadFrame(LEDMATRIX_CHIP); // Boot screen
     
     gripperServo.attach(SERVO_PIN);
+    gripperServo.writeMicroseconds(getServoUsFromDegrees(GRIPPER_ANGLE_MAX_DEG));
 
     while (!Serial && (millis() < MAX_WAIT_TIME_FOR_SERIAL_MS)) {
         ; // Wait for serial port to connect.
@@ -63,6 +68,10 @@ void setup()
 
     matrix.loadFrame(LEDMATRIX_CLOUD_WIFI);
     connectToWifi();
+
+    Serial.println("\nStarting connection to server...");
+    udp.begin(ARDUINO_UDP_PORT);
+
     Serial.println("Setup complete, ready to control the gripper.");
     matrix.loadFrame(LEDMATRIX_HEART_BIG);
     delay(500);
@@ -81,38 +90,38 @@ void loop()
 
         if (timeInPeriod < 2000) 
         {
-            servoPositionDegrees = map(timeInPeriod, 0, 2000, 0, 180);
+            servoPositionDegrees = map(timeInPeriod, 0, 2000, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
         } 
         else if (timeInPeriod < 4000) 
         {
-            servoPositionDegrees = map(timeInPeriod, 2000, 4000, 180, 0);
+            servoPositionDegrees = map(timeInPeriod, 2000, 4000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
         } 
         else if (timeInPeriod < 5000) 
         {
-            servoPositionDegrees = 0;
+            servoPositionDegrees = GRIPPER_ANGLE_MIN_DEG;
         } 
         else if (timeInPeriod < 6000) 
         {
-            servoPositionDegrees = map(timeInPeriod, 5000, 6000, 0, 180);
+            servoPositionDegrees = map(timeInPeriod, 5000, 6000, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
         } 
         else if (timeInPeriod < 7000) 
         {
-            servoPositionDegrees = map(timeInPeriod, 6000, 7000, 180, 0);
+            servoPositionDegrees = map(timeInPeriod, 6000, 7000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
         } 
         else if (timeInPeriod < 7500) 
         {
-            servoPositionDegrees = map(timeInPeriod, 7000, 7500, 0, 180);
+            servoPositionDegrees = map(timeInPeriod, 7000, 7500, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
         } 
         else if (timeInPeriod < 8000) 
         {
-            servoPositionDegrees = map(timeInPeriod, 7500, 8000, 180, 0);
+            servoPositionDegrees = map(timeInPeriod, 7500, 8000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
         } 
         else 
         {
-            servoPositionDegrees = 0;
+            servoPositionDegrees = GRIPPER_ANGLE_MIN_DEG;
         }
 
-        gripperServo.write(servoPositionDegrees);
+        gripperServo.writeMicroseconds(getServoUsFromDegrees(servoPositionDegrees));
         updateFrame(frame, servoPositionDegrees);
         matrix.loadFrame(frame);
 
@@ -125,18 +134,18 @@ void loop()
 /**
  * Updates the frame that represents the 1-bit display buffer for the 12 x 8 pixel display.
  * Lights up from 0 to 12 pixels on the first two rows, depending on the servoPositionDegrees that
- * is from 0 to 180 degrees.
+ * is from GRIPPER_ANGLE_MIN_DEG to GRIPPER_ANGLE_MAX_DEG degrees.
  */
 void updateFrame(uint32_t *frame, int servoPositionDegrees) 
 {
-    // Check for valid servo position by clipping it to the range 0-180
-    if (servoPositionDegrees < 0) 
+    // Check for valid servo position by clipping it to the valid range
+    if (servoPositionDegrees < GRIPPER_ANGLE_MIN_DEG) 
     {
-        servoPositionDegrees = 0;
+        servoPositionDegrees = GRIPPER_ANGLE_MIN_DEG;
     } 
-    else if (servoPositionDegrees > 180) 
+    else if (servoPositionDegrees > GRIPPER_ANGLE_MAX_DEG) 
     {
-        servoPositionDegrees = 180;
+        servoPositionDegrees = GRIPPER_ANGLE_MAX_DEG;
     }
     // Could do some error checking here on the frame buffer, but hey this is a hobby project.
 
@@ -145,9 +154,9 @@ void updateFrame(uint32_t *frame, int servoPositionDegrees)
     frame[1] = 0b01000010010101000010001010000010;
     frame[2] = 0b00101000000000000000000000000000;
     
-    // Map servo position (0-180) to number of pixels (0-12)
-    int numPixels = map(servoPositionDegrees, 0, 180, 0, 12);
-    
+    // Map servo position to number of pixels (0-12)
+    int numPixels = map(servoPositionDegrees, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG, 0, 12);
+
     // Set pixels in first two rows
     for (int bitPosition = 0; bitPosition < numPixels; bitPosition++) {
         // Set pixel in first row (bits 31-20)
@@ -198,10 +207,6 @@ void connectToWifi()
     }
     Serial.println("Connected to WiFi!");
     printWifiStatus();
-
-    Serial.println("\nStarting connection to server...");
-    
-    // TODO udp.begin(localNetworkPort);    
 }
 
 
@@ -221,3 +226,31 @@ void printWifiStatus() {
     Serial.print(rssi);
     Serial.println(" dBm");
 }
+
+
+/**
+ * Converts servo position in degrees to microseconds for PWM control.
+ * Standard servo control uses pulse widths between 500-2500 microseconds.
+ * 
+ * This function is customized to fit with the servo and physical robot arm being used,
+ * to match the minimum and maximum angles to the physical robot arm.
+ * 
+ * @param degrees: Servo position in degrees
+ * @return: Pulse width in microseconds
+ */
+uint16_t getServoUsFromDegrees(int16_t degrees) {
+    // Constrain degrees to valid servo range (0-180)
+    if (degrees < GRIPPER_ANGLE_MIN_DEG) {
+        degrees = GRIPPER_ANGLE_MIN_DEG;
+    } else if (degrees > GRIPPER_ANGLE_MAX_DEG) {
+        degrees = GRIPPER_ANGLE_MAX_DEG;
+    }
+
+    // Map degrees (GRIPPER_ANGLE_MIN_DEG-GRIPPER_ANGLE_MAX_DEG) to microseconds
+    int16_t US_MIN = 1500 + 25;
+    int16_t US_MAX = 2000;
+    int16_t span = GRIPPER_ANGLE_MAX_DEG - GRIPPER_ANGLE_MIN_DEG;
+    return US_MIN + ((uint32_t)degrees * (US_MAX - US_MIN)) / span;
+}
+
+
