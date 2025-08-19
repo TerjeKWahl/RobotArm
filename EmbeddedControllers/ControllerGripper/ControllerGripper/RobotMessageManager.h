@@ -65,11 +65,11 @@ MessageFromPcToController parseMessageFromPcToController(const uint8_t* data, si
 /**
  * Creates a binary message from controller to PC.
  * For now, the errorCode is always 0 (no error).
- * 
- * @param currentAngles: Current joint angles
+ *
+ * @param currentGripperAngleDeg: Current gripper angle, in degrees
  * @param output: Output buffer to write the message (must be at least SEND_MSG_LENGTH bytes)
  * @return: Number of bytes written to output buffer
  */
-size_t createMessageFromControllerToPc(JointAngles currentAngles, uint8_t* output);
+size_t createMessageFromControllerToPc(int8_t currentGripperAngleDeg, uint8_t* output);
 
 #endif // ROBOT_MESSAGE_MANAGER_H

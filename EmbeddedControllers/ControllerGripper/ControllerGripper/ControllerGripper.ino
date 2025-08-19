@@ -33,7 +33,6 @@ const int16_t SERVO_PIN = 9;
 const uint32_t MAX_WAIT_TIME_FOR_SERIAL_MS = 3000; // Maximum wait time for serial connection to start working on startup, in milliseconds
 
 Servo gripperServo; 
-int16_t servoPositionDegrees = 0;
 
 int wifiStatus = WL_IDLE_STATUS;
 char ssid[] = SECRET_SSID;  // your network SSID (name)
@@ -85,49 +84,149 @@ void loop()
 
     while(true)
     {
-        uint32_t milliseconds = millis();
-        uint32_t timeInPeriod = milliseconds % 10000; // 10 seconds cycle
+        // Demo mode
+        uint32_t demoDurationWantedMs = 20000; // Duration of demo mode before going into normal remote control function. Set to 0 to skip demo mode.
+        uint32_t currentTimeMs = millis();
+        uint32_t demoStartMs = currentTimeMs;
+        int16_t servoPositionDegrees = 0;
+        if (demoDurationWantedMs > 0)
+        {
+            Serial.println("Starting demo mode");
+            while (currentTimeMs - demoStartMs < demoDurationWantedMs) {
+                uint32_t timeInPeriod = (currentTimeMs - demoStartMs) % 10000; // 10 seconds cycle
 
-        if (timeInPeriod < 2000) 
-        {
-            servoPositionDegrees = map(timeInPeriod, 0, 2000, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
-        } 
-        else if (timeInPeriod < 4000) 
-        {
-            servoPositionDegrees = map(timeInPeriod, 2000, 4000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
-        } 
-        else if (timeInPeriod < 5000) 
-        {
-            servoPositionDegrees = GRIPPER_ANGLE_MIN_DEG;
-        } 
-        else if (timeInPeriod < 6000) 
-        {
-            servoPositionDegrees = map(timeInPeriod, 5000, 6000, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
-        } 
-        else if (timeInPeriod < 7000) 
-        {
-            servoPositionDegrees = map(timeInPeriod, 6000, 7000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
-        } 
-        else if (timeInPeriod < 7500) 
-        {
-            servoPositionDegrees = map(timeInPeriod, 7000, 7500, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
-        } 
-        else if (timeInPeriod < 8000) 
-        {
-            servoPositionDegrees = map(timeInPeriod, 7500, 8000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
-        } 
-        else 
-        {
-            servoPositionDegrees = GRIPPER_ANGLE_MIN_DEG;
+                if (timeInPeriod < 2000) 
+                {
+                    servoPositionDegrees = map(timeInPeriod, 0, 2000, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
+                } 
+                else if (timeInPeriod < 4000) 
+                {
+                    servoPositionDegrees = map(timeInPeriod, 2000, 4000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
+                } 
+                else if (timeInPeriod < 5000) 
+                {
+                    servoPositionDegrees = GRIPPER_ANGLE_MIN_DEG;
+                } 
+                else if (timeInPeriod < 6000) 
+                {
+                    servoPositionDegrees = map(timeInPeriod, 5000, 6000, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
+                } 
+                else if (timeInPeriod < 7000) 
+                {
+                    servoPositionDegrees = map(timeInPeriod, 6000, 7000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
+                } 
+                else if (timeInPeriod < 7500) 
+                {
+                    servoPositionDegrees = map(timeInPeriod, 7000, 7500, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG);
+                } 
+                else if (timeInPeriod < 8000) 
+                {
+                    servoPositionDegrees = map(timeInPeriod, 7500, 8000, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG);
+                } 
+                else 
+                {
+                    servoPositionDegrees = GRIPPER_ANGLE_MIN_DEG;
+                }
+
+                moveGripper(servoPositionDegrees);
+
+                currentTimeMs = millis(); // Update current time for next iteration of the while loop
+            }
+            Serial.println("Demo mode finished, entering normal operation mode.");
         }
 
-        gripperServo.writeMicroseconds(getServoUsFromDegrees(servoPositionDegrees));
-        updateFrame(frame, servoPositionDegrees);
-        matrix.loadFrame(frame);
 
-        // TODO: Check if WiFi is still connected (WiFi.status() == WL_CONNECTED) at regular intervals. If not, try to reconnect (Wifi.end() and connectToWifi());
+        // Normal operation
+        while(true) // Outer loop to handle errors and reconnects
+        {
+            int16_t servoPositionDegrees = GRIPPER_ANGLE_MAX_DEG; // Start with fully opened gripper
+            moveGripper(servoPositionDegrees);
+            int32_t lastSendTimeMs = 0;
+
+            while(true) { // Inner loop to handle incoming UDP messages and send updates
+                
+                // Check if WiFi is still connected (WiFi.status() == WL_CONNECTED) at regular intervals.
+                if (WiFi.status() != WL_CONNECTED) {
+                    Serial.println("WiFi disconnected!");
+                    break; // Exit the inner loop to reconnect
+                }
+
+                // Update the gripper position based on any incoming UDP messages
+                int packetSize = udp.parsePacket();
+                if (packetSize) {
+                    Serial.print("Received packet of size ");
+                    Serial.print(packetSize);
+                    Serial.print(" from ");
+                    IPAddress remoteIp = udp.remoteIP();
+                    Serial.print(remoteIp);
+                    Serial.print(", port ");
+                    Serial.println(udp.remotePort());
+
+                    uint8_t receiveBuffer[REC_MSG_LENGTH];
+                    if (packetSize > REC_MSG_LENGTH) {
+                        Serial.println("Packet size exceeds buffer size. Ignoring it.");
+                        udp.flush();
+                    }
+                    else
+                    {
+                        int len = udp.read(receiveBuffer, REC_MSG_LENGTH);
+                        if (len == 0) {
+                            Serial.println("Failed to read UDP packet.");
+                            break; // Exit the inner loop to reconnect
+                        }
+                        // Parse the incoming message
+                        bool isSuccessful = false;
+                        MessageFromPcToController incomingMessage = parseMessageFromPcToController(receiveBuffer, len, &isSuccessful);
+                        if (!isSuccessful) {
+                            Serial.println("Failed to parse incoming message.");
+                            break; // Exit the inner loop to reconnect
+                        }
+                        int16_t servoPositionDegrees = incomingMessage.desiredAngles.gripper;
+                        Serial.print("New desired gripper angle: ");
+                        Serial.println(servoPositionDegrees);
+                        moveGripper(servoPositionDegrees);
+                    }
+                }
+
+
+                // Send UDP message to the PC every SEND_PERIOD_MS milliseconds
+                uint32_t currentTimeMs = millis();
+                if (currentTimeMs - lastSendTimeMs >= SEND_PERIOD_MS) {
+                    lastSendTimeMs = currentTimeMs;
+                    udp.beginPacket(PC_IP_ADDRESS, ARDUINO_UDP_PORT);
+                    uint8_t sendBuffer[SEND_MSG_LENGTH];
+                    createMessageFromControllerToPc(servoPositionDegrees, sendBuffer);
+                    udp.write(sendBuffer, SEND_MSG_LENGTH);
+                    int16_t isSentSuccessfully = udp.endPacket();
+                    if (!isSentSuccessfully) {
+                        Serial.println("Failed to send UDP packet!");
+                        break; // Exit the inner loop to reconnect
+                    }
+                }
+            }
+
+            // Disconnect and reconnect to WiFi
+            Serial.println("Disconnecting from WiFi, and attempting reconnect...");
+            udp.flush();
+            udp.stop();
+            WiFi.end();
+            connectToWifi();
+        }
+
 
     }
+}
+
+
+/**
+ * Moves the gripper servo to the specified position and updates the LED matrix display.
+ * 
+ * @param targetDegrees: Target position for the gripper servo in degrees
+ */
+void moveGripper(int16_t targetDegrees) {
+    gripperServo.writeMicroseconds(getServoUsFromDegrees(targetDegrees));
+    updateFrame(frame, targetDegrees);
+    matrix.loadFrame(frame);
 }
 
 
@@ -247,10 +346,10 @@ uint16_t getServoUsFromDegrees(int16_t degrees) {
     }
 
     // Map degrees (GRIPPER_ANGLE_MIN_DEG-GRIPPER_ANGLE_MAX_DEG) to microseconds
-    int16_t US_MIN = 1500 + 25;
-    int16_t US_MAX = 2000;
-    int16_t span = GRIPPER_ANGLE_MAX_DEG - GRIPPER_ANGLE_MIN_DEG;
-    return US_MIN + ((uint32_t)degrees * (US_MAX - US_MIN)) / span;
+    const int16_t US_MIN = 1500 + 25; // Don't squeeze too tightly
+    const int16_t US_MAX = 1750; // 1500 + 5.55 per degree. So for 45 degrees it is 1500+250 = 1750
+    const int16_t SPAN = GRIPPER_ANGLE_MAX_DEG - GRIPPER_ANGLE_MIN_DEG;
+    return US_MIN + ((uint32_t)degrees * (US_MAX - US_MIN)) / SPAN;
 }
 
 

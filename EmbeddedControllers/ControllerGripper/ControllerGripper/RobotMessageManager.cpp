@@ -80,13 +80,23 @@ MessageFromPcToController parseMessageFromPcToController(const uint8_t* data, si
  * Creates a binary message from controller to PC.
  * For now, the errorCode is always 0 (no error).
  *
- * @param currentAngles: Current joint angles
+ * @param currentGripperAngleDeg: Current gripper angle, in degrees
  * @param output: Output buffer to write the message (must be at least SEND_MSG_LENGTH bytes)
  * @return: Number of bytes written to output buffer
  */
-size_t createMessageFromControllerToPc(JointAngles currentAngles, uint8_t* output) {
+size_t createMessageFromControllerToPc(int8_t currentGripperAngleDeg, uint8_t* output) {
+    int8_t UNKNOWN_ANGLE = -128;
+
     MessageFromControllerToPC message = {0};
-    
+    JointAngles currentAngles = {
+        .gripper = currentGripperAngleDeg,
+        .wrist = UNKNOWN_ANGLE,
+        .underarm = UNKNOWN_ANGLE,
+        .elbow = UNKNOWN_ANGLE,
+        .overarm = UNKNOWN_ANGLE,
+        .shoulderOut = UNKNOWN_ANGLE,
+        .shoulderForward = UNKNOWN_ANGLE
+    };
     message.prefixT = 84;  // ASCII "T"
     message.prefixW = 87;  // ASCII "W"
     message.apiVersion = 1;
