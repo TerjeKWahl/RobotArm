@@ -1382,6 +1382,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4dd0afc5f28321b418040a5e17371333, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isRunning: 0
   serverIp: 192.168.0.43
   port: 12345
   targetObject: {fileID: 1437976121}
@@ -2144,8 +2145,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: "Position (mm):  (X, Y, Z):     \u20130     \u20130     \u20130\nOrientation
-    (\xB0)   (X, Y, Z):     \u20130     \u20130     \u20130\nX is forward\nY is to
-    the left\nZ is up\n\nCurrent pos matrix:\n[[]\n[]\n[]\n[]]\t"
+    (\xB0)   (X, Y, Z):     \u20130     \u20130     \u20130\n(X is forward, Y is
+    to the left, Z is up)\nGripper angle (0 is closed):\nRecording: Off\n\nCurrent
+    pos matrix:\n[[]\n[]\n[]\n[]]\t"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
