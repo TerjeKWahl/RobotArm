@@ -192,7 +192,7 @@ def get_VR_position_and_orientation_matrix_from_last_known_angles(last_known_ang
 
 def __adjust_angles_to_not_crash_into_anything(desired_angles : JointAngles):
     """ Adjust angles to not crash into the table/desk or the robot torso. """
-    global joint_limits_deg, last_desired_7th_joint_angle_deg
+    global last_desired_7th_joint_angle_deg
 
     MIN_HEIGHT_OVER_TABLE_M = 0.00
     MIN_Y_POSITION_WRT_TORSO_M = -0.025
@@ -231,6 +231,7 @@ def __adjust_angles_to_not_crash_into_anything(desired_angles : JointAngles):
         desired_pose_matrix = robot_arm.fkine(desired_angles.as_np_array_rad(last_desired_7th_joint_angle_deg)).A
 
     return desired_angles
+
 
 
 def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles: JointAngles, 
@@ -294,29 +295,17 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
         print("!!!!! WARNING !!!!!! Failed to find inverse kinematics solution - use previous angles")
     else:
 
-        # Check if solution respects joint limits
-        q_deg = np.rad2deg(solution_q)
-        within_limits = True
-        for i, (q_val, limits) in enumerate(zip(q_deg, joint_limits_deg)):
-            if q_val < limits[0] or q_val > limits[1]:
-                print(f"WARNING: Joint {i+1} angle {q_val:.1f}° exceeds limits [{limits[0]}, {limits[1]}]")
-                within_limits = False
-        if not within_limits:
-            print("Inverse kinematics solution exceeds joint limits - use previous angles instead.")
-            desired_angles = None
-        else:
+        # Update desired angles
+        desired_angles = JointAngles()
+        desired_angles.shoulder_forward = joint_angles_deg[0]
+        desired_angles.shoulder_out = joint_angles_deg[1]
+        desired_angles.overarm = joint_angles_deg[2]
+        desired_angles.elbow = joint_angles_deg[3]
+        desired_angles.underarm = joint_angles_deg[4]
+        desired_angles.wrist = joint_angles_deg[5]
+        last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: This is temporary, but should improve stability
 
-            # Update desired angles
-            desired_angles = JointAngles()
-            desired_angles.shoulder_forward = joint_angles_deg[0]
-            desired_angles.shoulder_out = joint_angles_deg[1]
-            desired_angles.overarm = joint_angles_deg[2]
-            desired_angles.elbow = joint_angles_deg[3]
-            desired_angles.underarm = joint_angles_deg[4]
-            desired_angles.wrist = joint_angles_deg[5]
-            last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: This is temporary, but should improve stability
-
-            __adjust_angles_to_not_crash_into_anything(desired_angles) # Adjust angles to not crash into the table/desk or the robot torso
+        __adjust_angles_to_not_crash_into_anything(desired_angles) # Adjust angles to not crash the arm into the table/desk, the robot torso or itself
 
     # Return the desired angles
     return desired_angles
