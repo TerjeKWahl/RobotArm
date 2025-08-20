@@ -143,8 +143,8 @@ void loop()
             moveGripper(servoPositionDegrees);
             int32_t lastSendTimeMs = 0;
 
-            while(true) { // Inner loop to handle incoming UDP messages and send updates
-                
+            while(true) // Inner loop to handle incoming UDP messages and send updates
+            { 
                 // Check if WiFi is still connected (WiFi.status() == WL_CONNECTED) at regular intervals.
                 if (WiFi.status() != WL_CONNECTED) {
                     Serial.println("WiFi disconnected!");
@@ -153,41 +153,49 @@ void loop()
 
                 // Update the gripper position based on any incoming UDP messages
                 int packetSize = udp.parsePacket();
-                if (packetSize) {
-                    Serial.print("Received packet of size ");
-                    Serial.print(packetSize);
-                    Serial.print(" from ");
-                    IPAddress remoteIp = udp.remoteIP();
-                    Serial.print(remoteIp);
-                    Serial.print(", port ");
-                    Serial.println(udp.remotePort());
-
+                if (packetSize) 
+                {
                     uint8_t receiveBuffer[REC_MSG_LENGTH];
-                    if (packetSize > REC_MSG_LENGTH) {
+                    if (packetSize > REC_MSG_LENGTH) 
+                    {
                         Serial.println("Packet size exceeds buffer size. Ignoring it.");
                         udp.flush();
                     }
                     else
                     {
                         int len = udp.read(receiveBuffer, REC_MSG_LENGTH);
-                        if (len == 0) {
+                        if (len == 0) 
+                        {
                             Serial.println("Failed to read UDP packet.");
                             break; // Exit the inner loop to reconnect
                         }
                         // Parse the incoming message
                         bool isSuccessful = false;
                         MessageFromPcToController incomingMessage = parseMessageFromPcToController(receiveBuffer, len, &isSuccessful);
-                        if (!isSuccessful) {
+                        if (!isSuccessful) 
+                        {
                             Serial.println("Failed to parse incoming message.");
                             break; // Exit the inner loop to reconnect
                         }
                         servoPositionDegrees = incomingMessage.desiredAngles.gripper;
-                        if (incomingMessage.movementMode == RETURN_TO_ZERO) {
+                        if (incomingMessage.movementMode == RETURN_TO_ZERO) 
+                        {
                             servoPositionDegrees = GRIPPER_ANGLE_MAX_DEG; // Full opening of the gripper is the default position ("zero")
                         }
+                        moveGripper(servoPositionDegrees);
+
+                        /*
+                        // Debug output is slow and the lines below causes visible lag for the gripper, so only print if you need to debug
+                        Serial.print("Received packet of size ");
+                        Serial.print(packetSize);
+                        Serial.print(" from ");
+                        IPAddress remoteIp = udp.remoteIP();
+                        Serial.print(remoteIp);
+                        Serial.print(", port ");
+                        Serial.println(udp.remotePort());
                         Serial.print("New desired gripper angle: ");
                         Serial.println(servoPositionDegrees);
-                        moveGripper(servoPositionDegrees);
+                        */
                     }
                 }
 
@@ -256,8 +264,8 @@ void updateFrame(uint32_t *frame, int servoPositionDegrees)
     frame[1] = 0b01000010010101000010001010000010;
     frame[2] = 0b00101000000000000000000000000000;
     
-    // Map servo position to number of pixels (0-12)
-    int numPixels = map(servoPositionDegrees, GRIPPER_ANGLE_MIN_DEG, GRIPPER_ANGLE_MAX_DEG, 0, 12);
+    // Map servo position to number of pixels (0-12). 
+    int numPixels = map(servoPositionDegrees, GRIPPER_ANGLE_MAX_DEG, GRIPPER_ANGLE_MIN_DEG, 0, 12);
 
     // Set pixels in first two rows
     for (int bitPosition = 0; bitPosition < numPixels; bitPosition++) {
