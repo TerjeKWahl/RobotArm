@@ -1,6 +1,10 @@
 using UnityEngine;
 using TMPro;
 
+/// <summary>
+/// Updates the UI text elements with the current state of the virtual robot gripper.
+/// Also regularly sends the current state to the PC via UDP.
+/// </summary>
 public class UITextUpdater : MonoBehaviour
 {
     public GameObject RobotGripper;
@@ -52,30 +56,36 @@ public class UITextUpdater : MonoBehaviour
 
             Vector3 position = RobotGripper.transform.position;
             Vector3 rotation = RobotGripper.transform.eulerAngles;
+            // Unity's coordinate system is x-right, y-up, z-forward, vs the robot arm's coordinate system which is x-forward, y-left, z-up.
             // Convert to mm, and note the x,y,z axis changes because of different coordinate system for robot arm:
             float posX = (position.z - startPosition.z) * 1000;
             float posY = (position.x - startPosition.x) * -1000;
             float posZ = (position.y - startPosition.y) * 1000;
-            float rotX = rotation.x - startRotation.x;
-            float rotY = rotation.z - startRotation.z;
+            // In Unity Euler rotations are performed around the Z axis, the X axis, and the Y axis, in that order.
+            // Converted to robot arm coordinate system it is around the X, Y and Z axes respectively.
+            float rotX = rotation.z - startRotation.z;
+            float rotY = rotation.x - startRotation.x;
             float rotZ = rotation.y - startRotation.y;
             if (rotX > 180) rotX -= 360; // Want to keep the range of rotation values between -180 and 180 degrees
+            if (rotX < -180) rotX += 360;
             if (rotY > 180) rotY -= 360;
+            if (rotY < -180) rotY += 360;
             if (rotZ > 180) rotZ -= 360;
+            if (rotZ < -180) rotZ += 360;
 
-            // Get current VR controller right index trigger button value:
+            // Get current VR controller right index trigger button value
             float rightTriggerValue = OVRInput.Get(OVRInput.Axis1D.SecondaryIndexTrigger);
+            // Convert to desired gripper angle
+            byte gripperAngle = (byte)(Configuration.GRIPPER_ANGLE_MAX_DEG - (rightTriggerValue * Configuration.GRIPPER_ANGLE_MAX_DEG));
 
             bool isAPressed = OVRInput.Get(OVRInput.Button.One); // True if A button on right controller is currently pressed
+            // Update recording status if A button was just pressed
             if (isAPressed && !isAPressedLast)
             {
                 isRecording = !isRecording;
                 Debug.Log($"Recording status changed: {isRecording}");
             }
             isAPressedLast = isAPressed;
-
-
-            int gripperAngle = 45 - (int)(rightTriggerValue * 45);
 
             // Format position and rotation strings
             string posXStr = FormatNumber(posX);
@@ -85,21 +95,21 @@ public class UITextUpdater : MonoBehaviour
             string rotYStr = FormatNumber(rotY);
             string rotZStr = FormatNumber(rotZ);
 
-            string text = $"Position (mm):  (X, Y, Z): {posXStr} {posYStr} {posZStr}\n" +
-                           $"Orientation (°)   (X, Y, Z): {rotXStr} {rotYStr} {rotZStr}\n" +
-                           $"(X is forward, Y is to the left, Z is up)\n" +
-                           $"Gripper angle (0 is closed): {gripperAngle}°\n" +
-                           $"Recording: {(isRecording ? "On" : "Off")}\n" +
-                           $"Current pos matrix: \n{positionMatrix}\n"
-                           //$"Gripper (0-100% pressed): {(int)(rightTriggerValue * 100)}%\n" +
-                           //$"A button pressed: {isAPressed}\n"
-                           ;
+            string text =   $"Recording: {(isRecording ? "On" : "Off")}\n\n" +
+                            $"Position (mm):  (X, Y, Z): {posXStr} {posYStr} {posZStr}\n" +
+                            $"Orientation (°)   (X, Y, Z): {rotXStr} {rotYStr} {rotZStr}\n" +
+                            $"(X is forward, Y is to the left, Z is up)\n" +
+                            $"\nGripper angle (0 is closed): {gripperAngle}°\n" +
+                            $"\nCurrent pos matrix: \n{positionMatrix}\n"
+                            //$"Gripper (0-100% pressed): {(int)(rightTriggerValue * 100)}%\n" +
+                            //$"A button pressed: {isAPressed}\n"
+                            ;
             textMeshPro.text = text;
 
             // Send UDP packet, but only every FRAMES_SEND_MESSAGE_PERIOD frames to avoid flooding the network
             if (Time.frameCount % Configuration.FRAMES_SEND_MESSAGE_PERIOD == 0)
             {
-                byte[] messageBytes = robotMessageManager.CreateMessageFromVRToPC(positionMatrix);
+                byte[] messageBytes = robotMessageManager.CreateMessageFromVRToPC(positionMatrix, gripperAngle, isRecording);
                 udpManager.SendMessage(messageBytes);
             }
         }

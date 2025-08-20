@@ -4,4 +4,5 @@ public class Configuration
                                                      // to framerate (and execution of update() function)
     public const string PC_IP_ADDRESS = "192.168.0.43";
     public const int PC_PORT_NUMBER = 7506;
+    public const byte GRIPPER_ANGLE_MAX_DEG = 45;
 }

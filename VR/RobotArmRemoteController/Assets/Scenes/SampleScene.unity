@@ -2144,9 +2144,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position (mm):  (X, Y, Z):     \u20130     \u20130     \u20130\nOrientation
-    (\xB0)   (X, Y, Z):     \u20130     \u20130     \u20130\n(X is forward, Y is
-    to the left, Z is up)\nGripper angle (0 is closed):\nRecording: Off\n\nCurrent
+  m_text: "Recording: Off\n\nPosition (mm):  (X, Y, Z):     \u20130     \u20130    
+    \u20130\nOrientation (\xB0)   (X, Y, Z):     \u20130     \u20130     \u20130\n(X
+    is forward, Y is to the left, Z is up)\n\nGripper angle (0 is closed):\n\nCurrent
     pos matrix:\n[[]\n[]\n[]\n[]]\t"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
