@@ -189,45 +189,6 @@ async def control_robot_arm_demo_mode():
             wait_time_ms = angles[6]
             await asyncio.sleep(wait_time_ms / 1000)  # Wait to let the hubs process the command.
 
-    """
-    # Loop 3 times a small demo movement:
-    for _ in range(3):
-
-        desired_angles.gripper = 0
-        desired_angles.wrist = 90
-        desired_angles.underarm = 90
-        desired_angles.elbow = -20
-        desired_angles.overarm = -45
-        desired_angles.shoulder_out = 35
-        desired_angles.shoulder_forward = 35
-        message = create_message_from_PC_to_controller(
-            movement_mode=MovementMode.RUN_TO_TARGET,
-            desired_angles=desired_angles,
-            last_known_angles=last_known_angles
-        )
-        print("Sending message to the hub:", message)
-        await send(message)
-        print("Message sent to the hub.")
-        await asyncio.sleep(5)  # Wait to let the hub process the command.
-
-        # Now let's change the angles and send another message
-        desired_angles.gripper = 0
-        desired_angles.wrist = 0
-        desired_angles.underarm = 0
-        desired_angles.elbow = 0
-        desired_angles.overarm = 0
-        desired_angles.shoulder_out = 0
-        desired_angles.shoulder_forward = 0
-        message = create_message_from_PC_to_controller(
-            movement_mode=MovementMode.RUN_TO_TARGET,
-            desired_angles=desired_angles,
-            last_known_angles=last_known_angles
-        )
-        print("Sending message to the hub:", message)
-        await send(message)
-        print("Message sent to the hub.")
-        await asyncio.sleep(5)  # Wait to let the hub process the command.
-    """
 
     message = create_message_from_PC_to_controller(
         movement_mode=MovementMode.RETURN_TO_ZERO,
@@ -238,7 +199,6 @@ async def control_robot_arm_demo_mode():
     await send_to_lego_hubs(message)
     await send_to_Arduino(message)
     print("Message sent to the hub.")
-
 
     print("Exiting the control_robot_arm function.")
 
@@ -292,16 +252,7 @@ def handle_message_from_controller_to_PC(data: bytes):
         else:
             print(f"Unknown information source: {message.information_source}")
             return
-    """
-    print(f"Updated angles from {message.information_source}: "
-          f"gripper={last_known_angles.gripper}, "
-          f"wrist={last_known_angles.wrist}, "
-          f"underarm={last_known_angles.underarm}, "
-          f"elbow={last_known_angles.elbow}, "
-          f"overarm={last_known_angles.overarm}, "
-          f"shoulder_out={last_known_angles.shoulder_out}, "
-          f"shoulder_forward={last_known_angles.shoulder_forward}")
-    """
+        
 
 
 def handle_message_from_VR_to_PC(data: bytes):
@@ -318,9 +269,6 @@ def handle_message_from_VR_to_PC(data: bytes):
     if message is None:
         print("Failed to parse message from VR app")
         return
-
-    #print(f"Received message from VR app.")
-    #print(f"Received message from VR app with the following 4x4 matrix: \n{message.matrix_4x4}")
 
     with _state_lock:
         last_known_vr_matrix_4x4_unity_coordinate_system = message.matrix_4x4
