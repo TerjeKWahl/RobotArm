@@ -121,9 +121,9 @@ class MessageFromVRToPC(ctypes.Structure):
         ("prefix_w", ctypes.c_char),
         ("api_version", ctypes.c_int8),
         ("information_source", ctypes.c_int8),
+        ("desired_gripper_angle", ctypes.c_int8),
+        ("desired_recording_status", ctypes.c_int8),
         ("reserved_1", ctypes.c_int8),
-        ("reserved_2", ctypes.c_int8),
-        ("reserved_3", ctypes.c_int8),
         ("matrix_4x4", Matrix4x4)
     ]
 
@@ -232,6 +232,11 @@ def parse_message_from_VR_to_PC(data: bytes) -> MessageFromVRToPC:
         return None
     if data[4] != InformationSource.VR_APP:
         print(f"Invalid information source: Got {data[4]} but expected {InformationSource.VR_APP}")
+        return None    
+    # Validate desired recording status (0=off, 1=on)
+    desired_recording_status = data[6]
+    if desired_recording_status not in (0, 1):
+        print(f"Invalid desired recording status: Got {desired_recording_status} but expected 0 or 1")
         return None
     
     # Create a MessageFromVRToPC object from the byte array

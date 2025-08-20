@@ -4,12 +4,13 @@ It can run in different modes depending on a constant: Demo mode or VR following
 """
 
 import asyncio
+import time
 import threading
 from RobotMessageManager import create_message_from_PC_to_controller, parse_message_from_controller_to_PC, \
     create_message_from_PC_to_VR, parse_message_from_VR_to_PC, \
     MovementMode, JointAngles, InformationSource, Matrix4x4, UNKNOWN_ANGLE
 from RunMode import RunMode
-from Configuration import RUN_MODE
+from Configuration import RUN_MODE, GRIPPER_ANGLE_MAX_DEG
 from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orientation_matrix, \
     get_VR_position_and_orientation_matrix_from_last_known_angles
 
@@ -17,7 +18,7 @@ from InverseKinematicsHelper import get_desired_angles_from_VR_position_and_orie
 VR_FOLLOWING_PERIOD_MS = 20 # 20 gives frequency of 50Hz, but might slow down now and them because of waiting for send tasks to finish
 
 desired_angles = JointAngles(
-    gripper = 0,
+    gripper = GRIPPER_ANGLE_MAX_DEG,
     wrist = 0,
     underarm = 0,
     elbow = 0,
@@ -35,6 +36,7 @@ last_known_angles = JointAngles(
     shoulder_out = UNKNOWN_ANGLE
 )
 last_known_vr_matrix_4x4_unity_coordinate_system = None  # Last known position and orientation of the robot arm in the VR app (Unity coordinate system).
+is_desired_pose_updated = False
 
 # define function pointers to send data to the Lego hubs (Bluetooth) and VR app (UDP).
 send_to_lego_hubs = None  # This will be set later when the Bluetooth connection is established.
@@ -68,15 +70,20 @@ async def control_robot_arm_vr_following_mode():
     and send them to the robot arm.
     """
     global desired_angles, last_known_angles, last_known_vr_matrix_4x4_unity_coordinate_system
-    global send_to_lego_hubs, send_to_VR, send_to_Arduino
+    global send_to_lego_hubs, send_to_VR, send_to_Arduino, is_desired_pose_updated
 
     print("Running in VR following mode.")
 
     send_to_lego_hubs_task = None  # Task for sending messages to the Lego hubs
     send_to_VR_task = None         # Task for sending messages to the VR app
     send_to_Arduino_task = None    # Task for sending messages to the Arduino app
+    is_requested_to_send_messages_immediately = False
     while True:
-        if last_known_vr_matrix_4x4_unity_coordinate_system is not None:
+        # Get current time ms:
+        loop_start_time_s = time.perf_counter()
+
+        if is_desired_pose_updated:
+            is_desired_pose_updated = False # Reset flag
             # Try to calculate new desired angles every time a message is received from the VR app:
             new_desired_angles = get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles, last_known_vr_matrix_4x4_unity_coordinate_system)
             if new_desired_angles is None:
@@ -84,8 +91,10 @@ async def control_robot_arm_vr_following_mode():
                 pass
             else:
                 with _state_lock:
+                    desired_gripper_angle = desired_angles.gripper # Don't overwrite the gripper angle, that is not handled by this part of the code
                     desired_angles = new_desired_angles
-                #print(f"Updated desired angles from VR gripper position: {desired_angles}")
+                    desired_angles.gripper = desired_gripper_angle
+                #print(f"Updated desired angles from VR gripper pose: {desired_angles}")
 
         message_to_controller = create_message_from_PC_to_controller(
             movement_mode=MovementMode.MOVE_FAST,
@@ -96,6 +105,7 @@ async def control_robot_arm_vr_following_mode():
         if send_to_lego_hubs_task is not None and not send_to_lego_hubs_task.done():
             print("Waiting for previous send_to_lego_hubs_task to finish...")
             await send_to_lego_hubs_task
+        print(f"desired_angles.gripper being sent to controllers is: {desired_angles.gripper}")
         send_to_lego_hubs_task = asyncio.create_task(send_to_lego_hubs(message_to_controller))
         #print("Message sent to the hub.")
 
@@ -110,13 +120,15 @@ async def control_robot_arm_vr_following_mode():
         message_to_VR = create_message_from_PC_to_VR(
             last_known_pose_matrix_4x4 = last_known_pose_matrix_4x4
         )
-
         if send_to_VR_task is not None and not send_to_VR_task.done():
             print("Waiting for previous send_to_VR_task to finish...")
             await send_to_VR_task
         send_to_VR_task = asyncio.create_task(send_to_VR(message_to_VR))
 
-        await asyncio.sleep(VR_FOLLOWING_PERIOD_MS / 1000)
+        time_to_wait_ms = VR_FOLLOWING_PERIOD_MS - (int((time.perf_counter() - loop_start_time_s) * 1000))
+        #print(f"Waiting for {time_to_wait_ms} ms before next iteration...")
+        if time_to_wait_ms > 0:
+            await asyncio.sleep(time_to_wait_ms / 1000)
 
 
 
@@ -299,7 +311,7 @@ def handle_message_from_VR_to_PC(data: bytes):
     
     :param data: Raw bytes received from VR app
     """
-    global last_known_vr_matrix_4x4_unity_coordinate_system
+    global last_known_vr_matrix_4x4_unity_coordinate_system, desired_angles, is_desired_pose_updated
 
     # Parse the message
     message = parse_message_from_VR_to_PC(data)
@@ -312,3 +324,8 @@ def handle_message_from_VR_to_PC(data: bytes):
 
     with _state_lock:
         last_known_vr_matrix_4x4_unity_coordinate_system = message.matrix_4x4
+        # Update desired gripper angle from VR message
+        desired_angles.gripper = message.desired_gripper_angle
+        # TODO: message.desired_recording_status should be used for future recording functionality
+
+        is_desired_pose_updated = True

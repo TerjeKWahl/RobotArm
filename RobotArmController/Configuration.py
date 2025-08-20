@@ -21,6 +21,8 @@ VR_UDP_PORT = 7506             # Port for UDP communication with the VR device (
 ARDUINO_IP_ADDRESS = "192.168.0.67" # IP address of the Arduino device
 ARDUINO_UDP_PORT = 7507             # Port for UDP communication between Arduino and PC (both sending and receiving)
 
+GRIPPER_ANGLE_MAX_DEG = 45
+
 # Definition of the Lego robot arm structure (links and joints). This is a right arm:
 studs = 0.008  # 8 mm between Lego studs
 # Define joint limits in degrees
