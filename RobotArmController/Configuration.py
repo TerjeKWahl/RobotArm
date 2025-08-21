@@ -32,8 +32,8 @@ joint_limits_deg = [
     [-120, 120],  # Joint 3 (overarm):        
     [-85, 23],    # Joint 4 (elbow):          
     [-120, 120],  # Joint 5 (underarm):       
-    [-110, 110],  # Joint 6 (wrist):           - Wrist left/right (as seen when right thumb is up)
-    [-70, 70]     # Joint 7 (wrist other way): - This joint is not physically on the robot (yet), but greatly improves IK solutions and control stability as a "virtual" joint (for now)
+    [-110, 110],  # Joint 6 (wrist):           - Wrist down/up (as seen when right thumb is up)
+    [-70, 70]     # Joint 7 (wrist other way): - This joint is not physically on the robot (yet), but greatly improves IK solutions and control stability as a "virtual" joint
 ]
 joint_limits_rad = np.deg2rad(joint_limits_deg)
 # The robot's Elementary Transformations (ETs):
@@ -48,10 +48,10 @@ E8 = rtb.ET.Ry(flip=True, qlim=joint_limits_rad[3])   # Elbow rotation          
 E9 = rtb.ET.tx(7.5*studs)                             # 7.5 studs out to underarm rotation joint
 E10 = rtb.ET.Rx(qlim=joint_limits_rad[4])             # Underarm rotation                                    (positive angle is rotating the underarm clockwise)
 E11 = rtb.ET.tx(22.5*studs)                           # 22.5 studs out to wrist rotation joint
-E12 = rtb.ET.Rz(qlim=joint_limits_rad[5])             # Wrist rotation left/right (as seen when thumb is up) (positive angle is rotating the wrist left/inwards)
-E13 = rtb.ET.tx(3*studs)                              # 3 studs out to other wrist joint (TODO: Fix actual length))
-E14 = rtb.ET.Ry(qlim=joint_limits_rad[6])             # Wrist rotation up/down                               (positive angle is rotating the wrist ???)
-E15 = rtb.ET.tx(7*studs)                              # 7 studs out to gripper (TODO: Fix actual length))
+E12 = rtb.ET.Ry(qlim=joint_limits_rad[5])             # Wrist rotation down/up (as seen when thumb is up)    (positive angle is rotating the wrist down)
+E13 = rtb.ET.tx(3.5*studs)                            # 3.5 studs out to other wrist joint
+E14 = rtb.ET.Rz(qlim=joint_limits_rad[6])             # Wrist rotation left/right                            (this is a virtual joint not actually on the robot)
+E15 = rtb.ET.tx(3.5*studs)                            # 3.5 studs out to gripper joint actuator
 
 robot_arm = E1 * E2 * E3 * E4 * E5 * E6 * E7 * E8 * E9 * E10 * E11 * E12 * E13 * E14 * E15
 
@@ -61,5 +61,5 @@ NEUTRAL_POSE_SE3 = robot_arm.fkine(neutral_pose_with_bent_elbow_q)  # Calculate 
 
 unity_position_offset = np.array([0.25, -0.40, 0.30])    # Offset in meters (in Unity starts 25 cm right, 
                                                          # 40 cm down from eye level and 30 cm forward)
-robot_position_offset = np.array([0.320, -0.076, 0.105]) # Offset in meters (physical robot arm starts 32.0 cm forward, 
+robot_position_offset = np.array([0.296, -0.076, 0.105]) # Offset in meters (physical robot arm starts 29.6 cm forward, 
                                                          # 7.6 cm right and 11.3 cm up from table level)
