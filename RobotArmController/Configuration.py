@@ -32,8 +32,8 @@ joint_limits_deg = [
     [-120, 120],  # Joint 3 (overarm):        
     [-85, 23],    # Joint 4 (elbow):          
     [-120, 120],  # Joint 5 (underarm):       
-    [-110, 110],  # Joint 6 (wrist):           - Wrist down/up (as seen when right thumb is up)
-    [-70, 70]     # Joint 7 (wrist other way): - This joint is not physically on the robot (yet), but greatly improves IK solutions and control stability as a "virtual" joint
+    [-120, 120],  # Joint 6 (wrist):           - Wrist down/up (as seen when right thumb is up)
+    [-60, 60]     # Joint 7 (wrist other way): - This joint is not physically on the robot (yet), but greatly improves IK solutions and control stability as a "virtual" joint
 ]
 joint_limits_rad = np.deg2rad(joint_limits_deg)
 # The robot's Elementary Transformations (ETs):
