@@ -24,7 +24,7 @@ unity_to_robot_rotation = np.array([
 ]).astype(np.float64)  # Use float64 for higher precision
 unity_to_robot_rotation_inv = np.linalg.inv(unity_to_robot_rotation)
 
-last_desired_7th_joint_angle_deg = 0 # TODO: Temporary variable until implementing the 7th joint (2nd wrist joint) in the robot
+last_desired_7th_joint_angle_deg = 0 # Temporary(?) variable representing the virtual 7th joint (2nd wrist joint) in the robot
 
 
 
@@ -92,6 +92,7 @@ def __get_pos_in_robot_coordinate_system_se3(vr_unity_matrix_4x4: Matrix4x4) -> 
     # Extract rotation and translation parts
     rotation_part = pos_in_robot_coordinate_system[:3, :3]
     translation_part = pos_in_robot_coordinate_system[:3, 3]
+
     #print(f"Determinant of rotation part before adjusting: {np.linalg.det(rotation_part)}")
     # Normalize the rotation matrix using SVD
     U, s, Vt = np.linalg.svd(rotation_part)

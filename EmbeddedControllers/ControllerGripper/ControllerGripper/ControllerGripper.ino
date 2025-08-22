@@ -145,7 +145,7 @@ void loop()
 
             while(true) // Inner loop to handle incoming UDP messages and send updates
             { 
-                // Check if WiFi is still connected (WiFi.status() == WL_CONNECTED) at regular intervals.
+                // Check if WiFi is still connected (WiFi.status() == WL_CONNECTED)
                 if (WiFi.status() != WL_CONNECTED) {
                     Serial.println("WiFi disconnected!");
                     break; // Exit the inner loop to reconnect
@@ -185,7 +185,7 @@ void loop()
                         moveGripper(servoPositionDegrees);
 
                         /*
-                        // Debug output is slow and the lines below causes visible lag for the gripper, so only print if you need to debug
+                        // Debug output is slow (synchronous) and the lines below causes visible lag for the gripper, so only print if you need to debug
                         Serial.print("Received packet of size ");
                         Serial.print(packetSize);
                         Serial.print(" from ");
@@ -362,5 +362,3 @@ uint16_t getServoUsFromDegrees(int16_t degrees) {
     const int16_t SPAN = GRIPPER_ANGLE_MAX_DEG - GRIPPER_ANGLE_MIN_DEG;
     return US_MIN + ((uint32_t)degrees * (US_MAX - US_MIN)) / SPAN;
 }
-
-

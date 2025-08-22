@@ -11,6 +11,7 @@ public class UdpManager
     private readonly string ipAddress;
     private readonly int port;
 
+
     /// <summary>
     /// Constructor that creates a UDP socket for sending messages to the specified IP address and port.
     /// The socket is created once and reused for all subsequent SendMessage calls.
@@ -21,13 +22,13 @@ public class UdpManager
     {
         this.ipAddress = ipAddress;
         this.port = port;
-        
+
         try
         {
             // Create the UDP client and remote endpoint
             udpClient = new UdpClient();
             remoteEndPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
-            
+
             Debug.Log($"UdpManager initialized. Target: {ipAddress}:{port}");
         }
         catch (Exception ex)
@@ -35,6 +36,7 @@ public class UdpManager
             Debug.LogError($"Failed to initialize UdpManager: {ex.Message}");
         }
     }
+
 
     /// <summary>
     /// Sends a UDP message asynchronously to the configured remote endpoint.
@@ -58,11 +60,11 @@ public class UdpManager
         try
         {
             // Send the message asynchronously
-            await Task.Run(() => 
+            await Task.Run(() =>
             {
                 udpClient.Send(messageBytes, messageBytes.Length, remoteEndPoint);
             });
-            
+
             // Optionally log successful sends (comment out in production for performance)
             // Debug.Log($"Sent {messageBytes.Length} bytes to {ipAddress}:{port}");
         }

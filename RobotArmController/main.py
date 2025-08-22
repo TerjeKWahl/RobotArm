@@ -2,8 +2,8 @@
 This program is the main controller running on a PC.
 Controls the robot arm and communicates with Lego Technic Hubs via Bluetooth.
 
-This file mostly handles Bluetooth and Arduino connections. The higher level logic is handled in 
-the RobotArmController/RobotArmController.py file.
+This file mostly handles Bluetooth, Arduino and VR connections. The higher level logic is
+handled in the RobotArmController/RobotArmController.py file.
 """
 
 from time import sleep
@@ -150,6 +150,7 @@ async def main():
             await control_robot_arm(send_to_lego_hubs, send_to_VR_function, send_to_Arduino_function)
 
             await vr_UDP_manager.stop()
+            await arduino_UDP_manager.stop()
 
             print("Done.")
 

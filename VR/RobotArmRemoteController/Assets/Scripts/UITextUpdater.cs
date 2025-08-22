@@ -24,9 +24,9 @@ public class UITextUpdater : MonoBehaviour
 
 
     /// <summary>
-    /// Update the text with the current position and rotation of the RobotGripper,
-    /// as an offset from the starting position and rotation, in the coordinate system of the
-    /// robot arm (not Unity's coordinate system).
+    /// Update the text with the current pose of the RobotGripper,
+    /// and status of gripper angle and recording state (on/off)
+    /// Also sends the pose data to the PC via UDP.
     /// </summary>
     void Update()
     {
@@ -37,10 +37,6 @@ public class UITextUpdater : MonoBehaviour
             {
                 startPositionMatrix = RobotGripper.transform.localToWorldMatrix;
                 Debug.Log($"Start position matrix initialized to \n{startPositionMatrix}.");
-                //startPosition = RobotGripper.transform.position;
-                //translationAndRotationMatrix.SetColumn(3,
-                //    new Vector4(-startPosition.x, -startPosition.y, -startPosition.z, 1));
-                //Debug.Log($"Translation and rotation matrix updated to \n{translationAndRotationMatrix}.");
             }
             if (startPosition == Vector3.zero)
             {

@@ -1,6 +1,6 @@
 """
 This file handles higher level logic for controlling the robot arm.
-It can run in different modes depending on a constant: Demo mode or VR following mode.
+It can run in different modes depending on a configuration constant: Demo mode or VR following mode.
 """
 
 import asyncio
