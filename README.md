@@ -17,7 +17,8 @@ This repository contains the following project parts in these folders:
 - `VR` Meta Quest 3 VR app to remote control the robot arm and (todo) record AI training data
 - `AI` TODO: AI stuff: Training and inference
 - `Mechanics` 3D files for custom made mechanical parts
-  - `Gripper` 3D files for robot gripper
+  - `GripperForMicroServo` 3D files for robot gripper
   - `LegoTechnicHubWireInset` 3D file for modifying Lego Technic Hub to be driven by a power adapter in stead of batteries
+  - `VrGripper` 3D file for the virtual representation of the gripper in the VR app
 
 These components communicate using well defined communication APIs. Please see the `Docs` folder for more information.
