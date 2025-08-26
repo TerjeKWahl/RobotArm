@@ -66,7 +66,6 @@ def __get_current_pose_deg(last_known_angles: JointAngles) -> List[int]:
             last_desired_7th_joint_angle_deg]
 
 
-
 def __get_pos_in_robot_coordinate_system_se3(vr_unity_matrix_4x4: Matrix4x4) -> SE3:
     """
     Convert a 4x4 matrix from Unity's coordinate system to the robot arm's coordinate system.
@@ -223,7 +222,7 @@ def __adjust_angles_to_not_crash_into_anything(desired_angles : JointAngles):
         desired_pose_matrix = robot_arm.fkine(desired_angles.as_np_array_rad(last_desired_7th_joint_angle_deg)).A
 
     # Now make sure we don't crash into the robot's torso:
-    # TODO Make this more fancy
+    # TODO Make this more fancy so the robot arm can reach in front of the torso if the shoulder out joint is extended enough
     while desired_pose_matrix[1, 3] > MIN_Y_POSITION_WRT_TORSO_M:  # If the end-effector is too close to the torso
         if desired_angles.overarm >= joint_limits_deg[2][0] - ANGLE_ADJUSTMENT_STEP_DEG:
             desired_angles.overarm -= ANGLE_ADJUSTMENT_STEP_DEG
@@ -256,6 +255,9 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
         print(f"The robot has {robot_arm.n} joints")
         print(f"The robot has {robot_arm.m} Elementary Transformations (ETs)")
 
+        # TODO: On first call, also make alternative robot arms with stricter limits for the virtual second wrist joint, and 
+        # use this to find IK solutions that minimize the virtual wrist joint angle, to minimize errors between virtual and actual robot arm.
+
 
     desired_pose_se3 = __get_pos_in_robot_coordinate_system_se3(vr_unity_matrix_4x4)
     #print(f"desired_pose_se3: \n{desired_pose_se3}")
@@ -267,16 +269,17 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
                                                     # The X and Z axes are more important for orientation, and we want to prioritize the Z axis (controlled by wrist) over 
                                                     # the X axis (controlled by underarm rotation).
     mask_priority_2 = np.array([2, 2, 2, 1, 0, 1])  # We want to prioritize the position over the orientation in the IK solution, 
-                                                    # and for orientation we don't prioritize rotation around the Y axis (missing wrist joint around 2nd axis).
+                                                    # and for orientation we don't prioritize rotation around the Y axis (missing wrist joint around 2nd axis). TODO change and test
     mask_list = [mask_priority_1, mask_priority_2]  # List of masks to try
 
     joint_angles_deg = 0
     was_successful = False
+    # TODO for robot arms in robot arm list
     for mask_priority in mask_list:
         #print(f"\n\nTrying mask priority: {mask_priority} for desired pose:")
 
         # Solve IK (inverse kinematics):
-        joint_angles_solution = robot_arm.ik_LM(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100)
+        joint_angles_solution = robot_arm.ik_LM(Tep=desired_pose_se3, q0=current_pose_q, mask=mask_priority, joint_limits=True, ilimit=30, slimit=100) # TODO: Takes long time? Consider having slimit lower except for the most liberal robot arm representation.
         solution_q, was_successful, iterations, num_searches, residual = joint_angles_solution
         #print(f"LM Inverse kinematics solution: {'SUCCESS' if was_successful else 'FAILURE'}", end='. ')
         if was_successful:
@@ -304,7 +307,7 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
         desired_angles.elbow = joint_angles_deg[3]
         desired_angles.underarm = joint_angles_deg[4]
         desired_angles.wrist = joint_angles_deg[5]
-        last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: This is temporary, but should improve stability
+        last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: This may be temporary, but improves stability
 
         __adjust_angles_to_not_crash_into_anything(desired_angles) # Adjust angles to not crash the arm into the table/desk, the robot torso or itself
 

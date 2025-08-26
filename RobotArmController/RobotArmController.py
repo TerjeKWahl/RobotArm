@@ -94,6 +94,7 @@ async def control_robot_arm_vr_following_mode():
             else:
                 with _state_lock:
                     desired_gripper_angle = desired_angles.gripper # Don't overwrite the gripper angle, that is not handled by this part of the code
+                    # TODO: Apply a multiplier to the desired wrist joint angle, to work around the large slack in that joint
                     desired_angles = new_desired_angles
                     desired_angles.gripper = desired_gripper_angle
                 is_requested_to_send_messages_immediately = True
