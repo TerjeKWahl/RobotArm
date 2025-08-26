@@ -269,7 +269,7 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
                                                     # The X and Z axes are more important for orientation, and we want to prioritize the Z axis (controlled by wrist) over 
                                                     # the X axis (controlled by underarm rotation).
     mask_priority_2 = np.array([2, 2, 2, 1, 0, 1])  # We want to prioritize the position over the orientation in the IK solution, 
-                                                    # and for orientation we don't prioritize rotation around the Y axis (missing wrist joint around 2nd axis). TODO change and test
+                                                    # and for orientation we don't prioritize rotation around the Y axis (missing wrist joint around 2nd axis). TODO change and test manually
     mask_list = [mask_priority_1, mask_priority_2]  # List of masks to try
 
     joint_angles_deg = 0
@@ -307,7 +307,7 @@ def get_desired_angles_from_VR_position_and_orientation_matrix(last_known_angles
         desired_angles.elbow = joint_angles_deg[3]
         desired_angles.underarm = joint_angles_deg[4]
         desired_angles.wrist = joint_angles_deg[5]
-        last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: This may be temporary, but improves stability
+        last_desired_7th_joint_angle_deg = joint_angles_deg[6] # TODO: Using this virtual joint improves stability
 
         __adjust_angles_to_not_crash_into_anything(desired_angles) # Adjust angles to not crash the arm into the table/desk, the robot torso or itself
 

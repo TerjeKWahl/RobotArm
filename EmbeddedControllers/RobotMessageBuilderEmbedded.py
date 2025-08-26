@@ -68,8 +68,6 @@ def __sanitize_angles(joint_angles: JointAngles):
     :param joint_angles: The joint angles to sanitize, in degrees.
     """
 
-    # TODO: Compensate a limit when b is moving, etc
-
     # Joint angle limits copied from Configuration.py:
     joint_limits_deg = [
         [-35, 45],    # Joint 1 (shoulder forward)
