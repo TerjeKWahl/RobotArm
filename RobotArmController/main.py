@@ -1,0 +1,166 @@
+"""
+This program is the main controller running on a PC.
+Controls the robot arm and communicates with Lego Technic Hubs via Bluetooth.
+
+This file mostly handles Bluetooth, Arduino and VR connections. The higher level logic is
+handled in the RobotArmController/RobotArmController.py file.
+"""
+
+from time import sleep
+import asyncio
+import threading
+from contextlib import suppress
+from bleak import BleakScanner, BleakClient
+from RobotArmController import control_robot_arm, handle_message_from_controller_to_PC, handle_message_from_VR_to_PC
+from Configuration import (
+    SW_VERSION,
+    HUB_NAME_SHOULDER_CONTROLLER,
+    HUB_NAME_LOWER_ARM_CONTROLLER,
+    VR_IP_ADDRESS,
+    VR_UDP_PORT,
+    ARDUINO_IP_ADDRESS,
+    ARDUINO_UDP_PORT
+)
+from UdpManager import UdpManager
+
+PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef" # Bluetooth communication constant
+
+# Thread lock for protecting against concurrent execution
+_concurrency_lock = threading.Lock()
+
+
+
+async def main():
+    print(f"Starting robot arm main controller, version {SW_VERSION}.")
+
+    main_task = asyncio.current_task()
+
+    def handle_bluetooth_disconnect(_):
+        print("A Lego hub was disconnected.")
+
+        # If the hub disconnects before this program is done,
+        # cancel this program so it doesn't get stuck waiting
+        # forever.
+        if not main_task.done():
+            main_task.cancel()
+
+
+    lego_hub_ready_event_1 = asyncio.Event() # To tell when the hub is ready to receive data.
+    lego_hub_ready_event_2 = asyncio.Event() # To tell when the hub is ready to receive data.
+
+
+    def handle_rx_1(_, data: bytearray):
+        if data[0] == 0x01:  # "write stdout" event (0x01)
+            payload = data[1:]
+
+            if payload == b"rdy":
+                print("Received 'rdy' from the first hub.")
+                lego_hub_ready_event_1.set()
+            else:
+                #print("Received:", payload)
+                handle_message_from_controller_to_PC(payload)
+
+
+    def handle_rx_2(_, data: bytearray):
+        if data[0] == 0x01:  # "write stdout" event (0x01)
+            payload = data[1:]
+
+            if payload == b"rdy":
+                print("Received 'rdy' from the second hub.")
+                lego_hub_ready_event_2.set()
+            else:
+                #print("Received:", payload)
+                handle_message_from_controller_to_PC(payload)
+
+
+    print("Searching for the first hub...")
+    bluetooth_device_1 = await BleakScanner.find_device_by_name(HUB_NAME_SHOULDER_CONTROLLER) # Do a Bluetooth scan to find the first hub.
+
+    if bluetooth_device_1 is None:
+        print(f"Could not find hub with name: {HUB_NAME_SHOULDER_CONTROLLER}")
+        return
+
+    async with BleakClient(bluetooth_device_1, handle_bluetooth_disconnect) as bluetooth_client_1: # Connect to the first hub.
+        print(f"Connected to {bluetooth_device_1.name}")
+        await bluetooth_client_1.start_notify(PYBRICKS_COMMAND_EVENT_CHAR_UUID, handle_rx_1) # Subscribe to notifications from the first hub.
+
+        print("Searching for the second hub...")
+        bluetooth_device_2 = await BleakScanner.find_device_by_name(HUB_NAME_LOWER_ARM_CONTROLLER) # Do a Bluetooth scan to find the second hub.
+
+        if bluetooth_device_2 is None:
+            print(f"Could not find hub with name: {HUB_NAME_LOWER_ARM_CONTROLLER}")
+            return
+
+        async with BleakClient(bluetooth_device_2, handle_bluetooth_disconnect) as bluetooth_client_2: # Connect to the second hub.
+            print(f"Connected to {bluetooth_device_2.name}")
+            await bluetooth_client_2.start_notify(PYBRICKS_COMMAND_EVENT_CHAR_UUID, handle_rx_2) # Subscribe to notifications from the second hub.
+
+            # Tell user to start program on the hub.
+            print("Start the programs on the two Lego hubs now with the button.")
+
+            await lego_hub_ready_event_1.wait()  # Wait for hub to say that it is ready to receive data.
+            lego_hub_ready_event_1.clear()       # Prepare for the next ready event.
+            await lego_hub_ready_event_2.wait()  # Wait for hub to say that it is ready to receive data.
+            lego_hub_ready_event_2.clear()       # Prepare for the next ready event.
+            print("Both hubs are ready to receive data.")
+
+            async def send_to_lego_hubs(data):
+                """Send data to the two hubs."""
+                # Send the same data to both hubs.
+                with _concurrency_lock:
+                    # Send to both hubs concurrently:
+                    write_to_bt_client_1_task = asyncio.create_task(
+                        bluetooth_client_1.write_gatt_char(
+                            PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+                            b"\x06" + data,  # prepend "write stdin" command (0x06)
+                            response=False
+                        ) # This code is based on the example at https://pybricks.com/projects/tutorials/wireless/hub-to-device/pc-communication/
+                    )
+                    await bluetooth_client_2.write_gatt_char(
+                        PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+                        b"\x06" + data,  # prepend "write stdin" command (0x06)
+                        response=False
+                    )
+                    await write_to_bt_client_1_task # Make sure the first write is also done before returning.
+
+
+            print("Creating UDP manager for communication with the VR app.")
+            vr_UDP_manager = UdpManager(
+                destination_ip = VR_IP_ADDRESS,
+                port_number = VR_UDP_PORT,
+                on_message_received = handle_message_from_VR_to_PC
+            )
+            await vr_UDP_manager.start()
+            send_to_VR_function = vr_UDP_manager.send_UDP_packet
+            print("VR UDP manager created, ready to send messages to the VR app.")
+
+
+            print("Creating UDP manager for communication with the Arduino app.")
+            arduino_UDP_manager = UdpManager(
+                destination_ip = ARDUINO_IP_ADDRESS,
+                port_number = ARDUINO_UDP_PORT,
+                on_message_received = handle_message_from_controller_to_PC
+            )
+            await arduino_UDP_manager.start()
+            send_to_Arduino_function = arduino_UDP_manager.send_UDP_packet
+            print("Arduino UDP manager created, ready to send messages to the Arduino app.")
+
+
+            # Defer to RobotArmController.py for the actual robot arm control logic, and provide it references to the send functions.
+            await control_robot_arm(send_to_lego_hubs, send_to_VR_function, send_to_Arduino_function)
+
+            await vr_UDP_manager.stop()
+            await arduino_UDP_manager.stop()
+
+            print("Done.")
+
+    # Hub disconnects here when async with block exits.
+
+
+# Run the main async program.
+if __name__ == "__main__":
+    with suppress(asyncio.CancelledError):
+        while True:
+            asyncio.run(main())
+            print("Main loop exited, probably because the hub was disconnected. Restarting main loop in 5 seconds...")
+            sleep(5)
