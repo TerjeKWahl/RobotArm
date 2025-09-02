@@ -139,11 +139,10 @@ async def control_robot_arm_demo_mode():
     Control the robot arm in demo mode.
     This function sends a series of joint angles to the robot arm to demonstrate its capabilities.
     """
-    desired_gripper_angle_deg = 0
-
     underarm = -60
     underarm_twist = -40
     wrist = -60
+    """
     joint_angles_playlist = [ # Wave with underarm. First 6 values are joint angles, and the last value is the duration in milliseconds.
         [  0,   0,   0,   0,                       0,        0, 1000],
         [ 45,  15,   0,  13,                underarm,    wrist, 2000],
@@ -160,12 +159,41 @@ async def control_robot_arm_demo_mode():
         [ 45,   0,   0,  13,                     -90, wrist+ 0, 500],
         [  0,   0,   0,   0,                       0,        0, 2000],
         ]
-    
-    
+    """
+    # Create joint_angles_playlist that shows how each joint moves separately:
+    joint_angles_playlist = [
+        [  0,   0,   0,   0,    0,     0, 45, 5000],
+        [ 25,   0,   0,   0,    0,     0, 45, 2000],
+        [  0,   0,   0,   0,    0,     0, 45, 2000],
+        [  0,  25,   0,   0,    0,     0, 45, 2000],
+        [  0,   0,   0,   0,    0,     0, 45, 2000],
+        [  0,   0, -70,   0,    0,     0, 45, 2000],
+        [  0,   0,   0,   0,    0,     0, 45, 2000],
+        [  0,   0,   0,  20,    0,     0, 45,  700],
+        [  0,   0,   0, -20,    0,     0, 45, 1400],
+        [  0,   0,   0,   0,    0,     0, 45, 2000],
+        [  0,   0,   0,   0,   60,     0, 45, 2000],
+        [  0,   0,   0,   0,    0,     0, 45, 2000],
+        [  0,   0,   0,   0,    0,  -100, 45, 2000],
+        [  0,   0,   0,   0,    0,     0, 45, 2000],
+        [  0,   0,   0,   0,    0,     0,  0, 1000],
+        [  0,   0,   0,   0,    0,     0,  5,  250],
+        [  0,   0,   0,   0,    0,     0, 10,  250],
+        [  0,   0,   0,   0,    0,     0, 15,  250],
+        [  0,   0,   0,   0,    0,     0, 20,  250],
+        [  0,   0,   0,   0,    0,     0, 25,  250],
+        [  0,   0,   0,   0,    0,     0, 30,  250],
+        [  0,   0,   0,   0,    0,     0, 35,  250],
+        [  0,   0,   0,   0,    0,     0, 40,  250],
+        [  0,   0,   0,   0,    0,     0, 45,  500],
+        [  0,   0,   0,   0,    0,     0,  0, 1000],
+        [  0,   0,   0,   0,    0,     0, 45, 2000],
+    ]
+
     # Send the angles to the robot arm with a delay between each set of angles:
     for _ in range(3):
         for angles in joint_angles_playlist:
-            desired_angles.gripper = desired_gripper_angle_deg
+            desired_angles.gripper = angles[6]
             desired_angles.wrist = angles[5]
             desired_angles.underarm = angles[4]
             desired_angles.elbow = angles[3]
@@ -183,11 +211,7 @@ async def control_robot_arm_demo_mode():
             await send_to_Arduino(message)
             print("Message sent to the hub.")
 
-            desired_gripper_angle_deg = desired_gripper_angle_deg + 15
-            if desired_gripper_angle_deg > 45:
-                desired_gripper_angle_deg = 0 # Restart at 0
-
-            wait_time_ms = angles[6]
+            wait_time_ms = angles[7]
             await asyncio.sleep(wait_time_ms / 1000)  # Wait to let the hubs process the command.
 
 
